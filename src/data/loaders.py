@@ -1,7 +1,7 @@
 from torch.utils.data import DataLoader
 from datasets import load_from_disk
 from .dataset import GeneformerDataset
-from .sampler import LengthGroupedSampler, collate_fn_dynamic_pad
+from .sampler import LengthGroupedSampler, collate_fn_dynamic_pad, AdaptiveLengthGroupedSampler
 
 
 def create_dataloaders(dataset_path, batch_size=12, shuffle=True, num_workers=4, pad_token_id=0, val_split=0.05, seed=42):
@@ -12,8 +12,8 @@ def create_dataloaders(dataset_path, batch_size=12, shuffle=True, num_workers=4,
     train_dataset = GeneformerDataset(split['train'])
     val_dataset = GeneformerDataset(split['test'])
         
-    train_sampler = LengthGroupedSampler(train_dataset.get_lengths(), batch_size, shuffle=True)
-    val_sampler = LengthGroupedSampler(val_dataset.get_lengths(), batch_size, shuffle=False)
+    train_sampler = AdaptiveLengthGroupedSampler(train_dataset.get_lengths(), batch_size, shuffle=True)
+    val_sampler = AdaptiveLengthGroupedSampler(val_dataset.get_lengths(), batch_size, shuffle=False)
         
     train_loader = DataLoader(
         train_dataset,
