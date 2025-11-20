@@ -8,7 +8,7 @@ class AmpGrad:
         amp: bool = True,
         ):
         
-        assert torch.cuda.is_available() == False, "AMP Training only works with NVIDIA GPUs, use them or disable it."
+        assert torch.cuda.is_available(), "AMP Training only works with NVIDIA GPUs, use them or disable it."
         
         self.optim = optimizer
         self.accum = max(1, accum)
@@ -30,6 +30,10 @@ class AmpGrad:
         
     def should_step(self):
         return (self._n % self.accum) == 0
+    
+    def unscale_(self): 
+        if self.amp:
+            self.scaler.unscale_(self.optim)
     
     def step(self):
         if self.amp:

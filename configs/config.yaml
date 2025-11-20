@@ -26,22 +26,22 @@ data:
   dataset_path: "/home/krrish/Desktop/Programming/geneformer-scratch/mainData/genecorpus_30M_2048_int16.dataset"
   val_dataset_path: "/home/krrish/Desktop/Programming/geneformer-scratch/mainData/val_corpus.dataset"
   train_split: 0.9999
-  num_workers: 4
+  num_workers: 16
   pin_memory: true
-  prefetch_factor: 2
+  prefetch_factor: 8
   persistent_workers: true
   shuffle: true
   drop_last: true
 
 # Training
 training:
-  temperature: 2.0
+  temperature: 2.5
   alpha: 0.7
   learning_rate: 2e-4
   warmup_steps: 1000
   total_steps: 100000
   batch_size: 12
-  grad_accum_steps: 4  # Effective batch size 48
+  grad_accum_steps: 2 # Effective batch size = 48
   weight_decay: 0.01
   max_grad_norm: 1.0
   mixed_precision: true
@@ -55,8 +55,6 @@ training:
 # Hardware
 hardware:
   device: "cuda"
-  mixed_precision: true
-  num_workers: 4
 
 # Paths
 paths:

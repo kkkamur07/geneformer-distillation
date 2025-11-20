@@ -28,7 +28,8 @@ def main(cfg: DictConfig):
     torch.manual_seed(cfg.seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(cfg.seed)
-    
+        
+        torch.set_float32_matmul_precision('high') 
     # Device
     device = torch.device(cfg.hardware.device if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
@@ -42,7 +43,7 @@ def main(cfg: DictConfig):
     logger.info("🔧 Loading models...")
     
     # Load teacher model
-    teacher = TeacherModel(model_path=cfg.paths.teacher_model_path)
+    teacher = TeacherModel(model_path=cfg.paths.teacher_model_path, device=device)
     logger.info(f"Teacher model loaded from {cfg.paths.teacher_model_path} with {teacher.get_num_parameters():,} parameters")
     
     # Create student model
@@ -58,12 +59,10 @@ def main(cfg: DictConfig):
         device=device
     )
     
-    generator = torch.Generator().manual_seed(cfg.seed)
-    
     logger.info(f"Student model created with parameters:{student.get_num_parameters():,} total, {student.get_trainable_parameters():,} trainable")
     
-    torch.compile(student)
-    logger.info(f"Student model compiled with torch.compile()")
+    # Compile student model for optimization
+    # student = torch.compile(student)
     
     # Load the datasets
     logger.info("Loading datasets...")
@@ -75,13 +74,13 @@ def main(cfg: DictConfig):
     logger.info("Creating Samplers...")
     
     train_sampler = LengthGroupedSampler(
-        batch_size=cfg.data.batch_size,
+        batch_size=cfg.training.batch_size,
         dataset=None,
         lengths=train_dataset.length
     )
     
     val_sampler = LengthGroupedSampler(
-        batch_size=8,
+        batch_size=cfg.training.batch_size,
         lengths=val_dataset.length,     
         dataset=None,            
     )
@@ -92,8 +91,8 @@ def main(cfg: DictConfig):
     
     train_data_collator = GeneDataCollator(
         vocab_size=cfg.model.vocab_size,
-        mask_token_id=cfg.data.mask_token_id,
-        pad_token_id=cfg.data.pad_token_id,
+        mask_token_id=cfg.model.mask_token_id,
+        pad_token_id=cfg.model.pad_token_id,
         mlm_probability=0.15,
     )
     
@@ -104,6 +103,7 @@ def main(cfg: DictConfig):
         train_dataset,
         sampler=train_sampler,
         collate_fn=train_data_collator,
+        batch_size=cfg.training.batch_size,
         num_workers=cfg.data.num_workers,
         pin_memory=cfg.data.pin_memory,
         prefetch_factor=cfg.data.prefetch_factor if cfg.data.num_workers > 0 else None
@@ -113,6 +113,7 @@ def main(cfg: DictConfig):
         val_dataset,
         sampler=val_sampler,
         collate_fn=train_data_collator,
+        batch_size=cfg.training.batch_size,
         num_workers=cfg.data.num_workers,
         pin_memory=cfg.data.pin_memory,
         prefetch_factor=cfg.data.prefetch_factor if cfg.data.num_workers > 0 else None

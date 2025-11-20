@@ -27,12 +27,20 @@ class DistillationTrainer:
     ):
         self.student = student.to(device)
         self.teacher = teacher.to(device)
+        
+        if hasattr(self.student, "device"):
+            self.student.device = device
+        if hasattr(self.teacher, "device"):
+            self.teacher.device = device
+        
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.optimizer = optimizer
         self.cfg = cfg  # Store full config
         self.device = device
         self.logger = logger
+        
+        self.teacher.eval()
         
         # Training components
         self.amp_grad = AmpGrad(
@@ -78,8 +86,8 @@ class DistillationTrainer:
         alpha: float
     ):
         batch_size, seq_len, vocab_size = student_logits.shape
-        student_flat = student_logits.view(-1, vocab_size) 
-        teacher_flat = teacher_logits.view(-1, vocab_size) 
+        student_flat = student_logits.view(-1, vocab_size).float()
+        teacher_flat = teacher_logits.view(-1, vocab_size)
         labels_flat = labels.view(-1) 
     
         mask = labels_flat != -100  # (batch*seq,) boolean mask
@@ -113,34 +121,37 @@ class DistillationTrainer:
         return total_loss, loss_kd.item(), loss_ce.item()
     
     def train_step(self, batch: Dict[str, torch.Tensor]):
+        
+        batch = {k: v.to(self.device) for k, v in batch.items()}
 
         # Convert to long - important
-        input_ids = batch['input_ids'].long().to(self.device)
-        attention_mask = batch['attention_mask'].to(self.device)
-        labels = input_ids.clone() 
+        input_ids = batch['input_ids'].long()
+        attention_mask = batch['attention_mask']
+        labels = batch['labels'].long()
         
-        with torch.no_grad():
-            teacher_logits = self.teacher(
+        with torch.autocast(device_type=self.device.type, dtype = torch.float16, enabled=self.cfg.training.mixed_precision):
+            
+            with torch.no_grad():
+                teacher_logits = self.teacher(
+                    input_ids=input_ids,
+                    attention_mask=attention_mask,
+                    return_logits=True
+                )
+                
+             # Student forward
+            student_logits = self.student(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
                 return_logits=True
             )
-        
-        # Student forward
-        student_logits = self.student(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            return_logits=True
-        )
-        
-        # Compute loss
-        loss, kl_loss, ce_loss = self.distillation_loss(
-            student_logits=student_logits,
-            teacher_logits=teacher_logits,
-            labels=labels,
-            temperature=self.temperature,
-            alpha=self.alpha
-        )
+             # Compute loss
+            loss, kl_loss, ce_loss = self.distillation_loss(
+                student_logits=student_logits,
+                teacher_logits=teacher_logits,
+                labels=labels,
+                temperature=self.temperature,
+                alpha=self.alpha
+            )   
         
         # Backward pass with gradient accumulation
         self.amp_grad.backward(loss)
@@ -164,30 +175,32 @@ class DistillationTrainer:
         for batch in self.val_loader:
             input_ids = batch['input_ids'].long().to(self.device)
             attention_mask = batch['attention_mask'].to(self.device)
-            labels = input_ids.clone()
+            labels = batch['labels'].long().to(self.device)
             
-            # Forward pass
-            teacher_logits = self.teacher(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                return_logits=True
-            )
+            with torch.autocast(device_type=self.device.type, dtype = torch.float16, enabled=self.cfg.training.mixed_precision):
+                
+                # Forward pass
+                teacher_logits = self.teacher(
+                    input_ids=input_ids,
+                    attention_mask=attention_mask,
+                    return_logits=True
+                )
             
-            student_logits = self.student(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                return_logits=True
-            )
+                student_logits = self.student(
+                    input_ids=input_ids,
+                    attention_mask=attention_mask,
+                    return_logits=True
+                )
             
-            # Compute loss
-            loss, kl_loss, ce_loss = self.distillation_loss(
-                student_logits=student_logits,
-                teacher_logits=teacher_logits,
-                labels=labels,
-                temperature=self.temperature,
-                alpha=self.alpha
-            )
-            
+                # Compute loss
+                loss, kl_loss, ce_loss = self.distillation_loss(
+                    student_logits=student_logits,
+                    teacher_logits=teacher_logits,
+                    labels=labels,
+                    temperature=self.temperature,
+                    alpha=self.alpha
+                )
+                
             total_loss += loss.item()
             total_kl_loss += kl_loss
             total_ce_loss += ce_loss
@@ -225,16 +238,25 @@ class DistillationTrainer:
         pbar.update(self.global_step)
         
         while self.global_step < self.max_steps:
+            
             for batch in self.train_loader:
                 # Training step
                 metrics = self.train_step(batch)
+
+                accum_steps = self.cfg.training.grad_accum_steps
                 
-                running_loss += metrics['loss']
-                running_kl_loss += metrics['kl_loss']
-                running_ce_loss += metrics['ce_loss']
+                running_loss += metrics['loss'] / accum_steps
+                running_kl_loss += metrics['kl_loss'] / accum_steps
+                running_ce_loss += metrics['ce_loss'] / accum_steps
+                
+
                 
                 # Optimizer step
                 if self.amp_grad.should_step():
+                    
+                    # Unscale gradients if using AMP
+                    self.amp_grad.unscale_()
+                    
                     # Gradient clipping
                     torch.nn.utils.clip_grad_norm_(self.student.parameters(), 1.0)
                     
@@ -268,8 +290,8 @@ class DistillationTrainer:
                         running_kl_loss = 0.0
                         running_ce_loss = 0.0
                     
-                    # Validation
                     if self.global_step % self.val_every == 0:
+                        self.logger.info(f"Entered Validation Step: {self.global_step}")
                         val_metrics = self.validate()
                         
                         if self.logger:
@@ -287,7 +309,7 @@ class DistillationTrainer:
                             scheduler=self.scheduler,
                             step=self.global_step,
                             val_loss=val_metrics['val_loss'],
-                            config=self.config
+                            config=self.cfg
                         )
                     
                     # Stop if max steps reached
