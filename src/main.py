@@ -5,6 +5,7 @@ import numpy as np
 from tqdm import tqdm
 from transformers.trainer_pt_utils import LengthGroupedSampler
 
+from src.data.collator import GeneDataCollator
 from src.model.teacher_model import TeacherModel
 from src.model.student_model import StudentModel
 from src.data.dataset import GeneformerDataset
@@ -64,60 +65,58 @@ def main(cfg: DictConfig):
     torch.compile(student)
     logger.info(f"Student model compiled with torch.compile()")
     
-    #! There is something fundamentally wrong here.
-    # # Load dataset
-    # logger.info("Loading dataset...")
-    # dataset = GeneformerDataset(cfg.data.dataset_path)
+    # Load the datasets
+    logger.info("Loading datasets...")
     
-    # # Split into train/val
-    # train_size = int(len(dataset) * cfg.data.train_split)
-    # val_size = len(dataset) - train_size
-    
-    # train_dataset, val_dataset = torch.utils.data.random_split(
-    #     dataset, [train_size, val_size]
-    # )
-    
-    # logger.info(f"Train size: {len(train_dataset):,}")
-    # logger.info(f"Val size: {len(val_dataset):,}")
-    
-    # logger.info("Creating Samplers")
+    train_dataset = GeneformerDataset(cfg.data.dataset_path)
+    val_dataset = GeneformerDataset(cfg.data.val_dataset_path)
 
-    # all_lengths = dataset.lengths()
-    # logger.info("Obtained sequence lengths from the dataset")
-    # train_lengths = all_lengths[train_dataset.indices].tolist()
-    # val_lengths = all_lengths[val_dataset.indices].tolist()
+    # Creating samplers, collators and data loaders
+    logger.info("Creating Samplers...")
     
-    # train_sampler = LengthGroupedSampler(
-    #     batch_size=cfg.data.batch_size,
-    #     dataset=train_dataset,
-    #     lengths=train_lengths,
-    #     generator=generator
-    # )
+    train_sampler = LengthGroupedSampler(
+        batch_size=cfg.data.batch_size,
+        dataset=None,
+        lengths=train_dataset.length
+    )
     
-    # val_sampler = LengthGroupedSampler(
-    #     batch_size=cfg.data.batch_size,
-    #     dataset=val_dataset,
-    #     lengths=val_lengths,
-    #     generator=None
-    # )
-
+    val_sampler = LengthGroupedSampler(
+        batch_size=8,
+        lengths=val_dataset.length,     
+        dataset=None,            
+    )
     
-    # # Create dataloaders
-    # train_loader = DataLoader(
-    #     train_dataset,
-    #     sampler=train_sampler,
-    #     num_workers=cfg.data.num_workers,
-    #     pin_memory=cfg.data.pin_memory,
-    #     prefetch_factor=cfg.data.prefetch_factor if cfg.data.num_workers > 0 else None
-    # )
     
-    # val_loader = DataLoader(
-    #     val_dataset,
-    #     sampler=val_sampler,
-    #     num_workers=cfg.data.num_workers,
-    #     pin_memory=cfg.data.pin_memory,
-    #     prefetch_factor=cfg.data.prefetch_factor if cfg.data.num_workers > 0 else None
-    # )
+    # Creating data collators
+    logger.info("Creating DataCollator...")
+    
+    train_data_collator = GeneDataCollator(
+        vocab_size=cfg.model.vocab_size,
+        mask_token_id=cfg.data.mask_token_id,
+        pad_token_id=cfg.data.pad_token_id,
+        mlm_probability=0.15,
+    )
+    
+    # Creating data loaders
+    logger.info("Creating DataLoaders...")
+    
+    train_loader = DataLoader(
+        train_dataset,
+        sampler=train_sampler,
+        collate_fn=train_data_collator,
+        num_workers=cfg.data.num_workers,
+        pin_memory=cfg.data.pin_memory,
+        prefetch_factor=cfg.data.prefetch_factor if cfg.data.num_workers > 0 else None
+    )
+    
+    val_loader = DataLoader(
+        val_dataset,
+        sampler=val_sampler,
+        collate_fn=train_data_collator,
+        num_workers=cfg.data.num_workers,
+        pin_memory=cfg.data.pin_memory,
+        prefetch_factor=cfg.data.prefetch_factor if cfg.data.num_workers > 0 else None
+    )
     
     logger.info(f"DataLoaders created")
     
