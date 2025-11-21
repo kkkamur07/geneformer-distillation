@@ -164,4 +164,4 @@ cython_debug/
 mainData/
 models/geneformer-104M/
 models/geneformer-10M/
-outputs/
+outputs/geneformer_distillation/
