@@ -1,11 +1,3 @@
----
-datasets: ctheodoris/Genecorpus-30M
-license: apache-2.0
-tags:
-- single-cell
-- genomics
----
-
 # Geneformer-Distilled 4M
 
 This is a part of our seminar at the instite of statistics at LMU Munich. 
