@@ -41,7 +41,7 @@ def main(cfg: DictConfig):
     print("Loading dataset...")
     full_dataset = GeneformerDataset(cfg.data.val_dataset_path)
     
-    indices = np.random.choice(len(full_dataset), 100, replace=False)
+    indices = np.random.choice(len(full_dataset), 250, replace=False)
     small_dataset = Subset(full_dataset, indices)
     
     collator = GeneDataCollator(
@@ -61,10 +61,10 @@ def main(cfg: DictConfig):
     print("Loading Student...")
     student = StudentModel(
         vocab_size=cfg.model.vocab_size,
-        hidden_size=cfg.model.hidden_size,
+        hidden_size=128,
         num_hidden_layers=cfg.model.num_hidden_layers,
         num_attention_heads=cfg.model.num_attention_heads,
-        intermediate_size=cfg.model.intermediate_size,
+        intermediate_size=512,
         max_position_embeddings=cfg.model.max_position_embeddings,
         hidden_dropout_prob=cfg.model.hidden_dropout_prob,
         attention_probs_dropout_prob=cfg.model.attention_probs_dropout_prob,
@@ -72,7 +72,7 @@ def main(cfg: DictConfig):
     )
     
     # Load the best checkpoint
-    ckpt_path = "/home/krrish/Desktop/Programming/geneformer-scratch/outputs/checkpoints_/geneformer_distillation/model_best.pt"
+    ckpt_path = "/home/krrish/Desktop/Programming/geneformer-scratch/outputs/checkpoints_/geneformer4.3M/exp2/model_best.pt"
     if os.path.exists(ckpt_path):
         checkpoint = torch.load(ckpt_path, map_location=device, weights_only=False)
         
