@@ -6,7 +6,7 @@ names:
 
 # Teacher Model
 teacher:
-  model_path: "/home/krrish/Desktop/Programming/geneformer-scratch/models/geneformer-10M"
+  model_path: "/Users/krishuagarwal/Desktop/Programming/python/minigeneformer/models/geneformer-10M"
 
 # Student Model
 model:
@@ -24,7 +24,7 @@ model:
 # Data
 data:
   dataset_path: "/home/krrish/Desktop/Programming/geneformer-scratch/mainData/train_corpus.dataset"
-  val_dataset_path: "/home/krrish/Desktop/Programming/geneformer-scratch/mainData/val_corpus.dataset"
+  val_dataset_path: "/Users/krishuagarwal/Desktop/Programming/python/minigeneformer/data/val_corpus.dataset"
   train_split: 0.9999
   num_workers: 16
   pin_memory: true

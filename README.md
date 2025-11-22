@@ -33,11 +33,13 @@ As we have been training a language model with masking we are evaluating it on
 
 The current numbers suggests that everything is working just we need to train our model more for more duration because currently it is only being trainined on 1.2 Mn rows instead of 27 Mn rows so it has not seen enough data. 
 
+Update : If we train it more then the accuracy improves over time but the marginal gains are less, we increased the training steps from 61000 to 91000, we saw on improvement of 2% of MLM accuracy and perplexity improved by 40%.
+
 ```bash
 ============================================================
 Metric          | Teacher (Target)   | Student (Yours)    | Gap       
-MLM Accuracy    | 0.2984             | 0.1853             | -0.1130
-Perplexity      | 15.94              | 44.92              | +28.98
+MLM Accuracy    | 0.3026             | 0.2108             | -0.0918
+Perplexity      | 15.68              | 31.03              | +15.35
 ============================================================
 ```
 

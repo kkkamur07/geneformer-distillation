@@ -33,7 +33,7 @@ def calculate_metrics(logits, labels):
     
     return acc, ppl
 
-@hydra.main(version_base=None, config_path="/home/krrish/Desktop/Programming/geneformer-scratch/configs", config_name="config")
+@hydra.main(version_base=None, config_path="/Users/krishuagarwal/Desktop/Programming/python/minigeneformer/configs", config_name="config")
 def main(cfg: DictConfig):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
@@ -72,7 +72,7 @@ def main(cfg: DictConfig):
     )
     
     # Load the best checkpoint
-    ckpt_path = "/home/krrish/Desktop/Programming/geneformer-scratch/outputs/checkpoints_/geneformer4.3M/exp2/model_best.pt"
+    ckpt_path = "/Users/krishuagarwal/Desktop/Programming/python/minigeneformer/outputs/checkpoints_/geneformer4.3M/exp2/model_best.pt"
     if os.path.exists(ckpt_path):
         checkpoint = torch.load(ckpt_path, map_location=device, weights_only=False)
         
