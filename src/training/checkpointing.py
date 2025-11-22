@@ -60,7 +60,7 @@ def load_checkpoint(
     logger: Optional['TrainingLogger'] = None
 ):
 
-    ckpt = torch.load(path, map_location="cpu")
+    ckpt = torch.load(path, map_location="cpu", weights_only=False)
 
     # Verify config matches if available
     cfg = ckpt.get("config")

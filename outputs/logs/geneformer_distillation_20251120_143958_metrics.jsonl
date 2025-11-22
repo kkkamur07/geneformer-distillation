@@ -1,5 +1,0 @@
-{"step": 100, "timestamp": "2025-11-20T14:42:50.610335", "train_loss": 15.85524201631546, "learning_rate": 2e-05, "kl_loss": 18.309527693986894, "ce_loss": 10.128575496673584}
-{"step": 200, "timestamp": "2025-11-20T14:43:55.515069", "train_loss": NaN, "learning_rate": 4e-05, "kl_loss": 16.55483786702156, "ce_loss": NaN}
-{"step": 300, "timestamp": "2025-11-20T14:44:56.206762", "train_loss": NaN, "learning_rate": 6e-05, "kl_loss": 14.206157467961312, "ce_loss": NaN}
-{"step": 400, "timestamp": "2025-11-20T14:46:01.904422", "train_loss": 14.910611712932587, "learning_rate": 8e-05, "kl_loss": 17.249799255132675, "ce_loss": 9.452507591247558}
-{"step": 500, "timestamp": "2025-11-20T14:47:08.511643", "train_loss": NaN, "learning_rate": 0.0001, "kl_loss": 14.576163368225098, "ce_loss": NaN}

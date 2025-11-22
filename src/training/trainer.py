@@ -62,6 +62,20 @@ class DistillationTrainer:
             logger=logger
         )
         
+        try : 
+            start_step, last_val_loss = self.checkpoint_manager.load_last(
+                model=self.student,
+                optimizer=self.optimizer,
+                scheduler=self.scheduler
+            )
+            
+            self.global_step = start_step
+            self.last_val_loss = last_val_loss
+        
+        except FileNotFoundError:
+            self.global_step = 0
+            self.last_val_loss = float('inf')
+        
         # Hyperparameters
         self.temperature = cfg.training.temperature
         self.alpha = cfg.training.alpha
@@ -232,6 +246,7 @@ class DistillationTrainer:
         
         pbar = tqdm(
             total=self.max_steps,
+            initial=self.global_step,
             desc="Training",
             unit="step",
         )
