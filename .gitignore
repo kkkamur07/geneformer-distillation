@@ -165,3 +165,7 @@ mainData/
 models/geneformer-104M/
 models/geneformer-10M/
 outputs/geneformer_distillation/
+geneformer-hf/
+data/
+models/
+outputs/best
