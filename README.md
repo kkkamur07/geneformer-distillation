@@ -43,5 +43,7 @@ Perplexity      | 15.68              | 31.03              | +15.35
 ============================================================
 ```
 
+Currently training the 3M geneformer model with the minor config difference of `hidden_size` or `d_model` being reduced from 128 to 96 and the `intermediate size` ratio being kept the same at **4**
+
 This is an ongoing project, we will be improving it further. 
 
