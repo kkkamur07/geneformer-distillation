@@ -16,7 +16,7 @@ Here we are trying to distill a 4M parameter model from 10M parameter model whic
 In general it proved difficult to replicate but not impossible. 
 
 We have the following training metric 
-![Training](notebooks/training_metrics.png) 
+![Training](notebooks/training_metrics_4.5M.png) 
 
 and the weights of the distilled models can be found in the outputs/checkpoints we are going to use the model_best.pt
 
@@ -43,7 +43,19 @@ Perplexity      | 15.68              | 31.03              | +15.35
 ============================================================
 ```
 
+We have seen the data scaling working here, if you train it on more data the results including the MLM Accuracy and the perplexity improves, though measuing perplexity here doesn't make much sense except to predict the models confidence on the Masked Predictions. 
+
 Currently training the 3M geneformer model with the minor config difference of `hidden_size` or `d_model` being reduced from 128 to 96 and the `intermediate size` ratio being kept the same at **4**
 
-This is an ongoing project, we will be improving it further. 
+#### Results for Geneformer3M 
+![Training](notebooks/training_metrics_3M.png) 
 
+```bash
+============================================================
+Metric          | Teacher (Target)   | Student (Yours)    | Gap       
+MLM Accuracy    | 0.3028             | 0.1864             | -0.1164
+Perplexity      | 15.59              | 38.91              | +23.32
+============================================================
+```
+
+I must say that, this might not be a bad down shrinking, probably training them more will improve the accuracy for sure, because it has not seen enough data, maybe we should train this more around 50000 steps more.
