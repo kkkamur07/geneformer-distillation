@@ -2,7 +2,7 @@
 names:
   experiment_name: "geneformer_distillation"
   model_name: "student_geneformer"
-  data_name: "genecorpus_30M"
+  data_name: "cell_type_annotation"
 
 # Teacher Model
 teacher:
@@ -63,6 +63,7 @@ paths:
   output_dir: "outputs/${names.experiment_name}"
   teacher_model_path: "${teacher.model_path}"
   dataset_path: "${data.dataset_path}"
+  cell_type_path: "mainData/fineTuningData/cell_type_annotation"
 
 # Seed
 seed: 42

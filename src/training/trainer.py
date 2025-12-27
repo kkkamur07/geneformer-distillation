@@ -5,6 +5,7 @@ from typing import Optional, Dict, Any
 from pathlib import Path
 from omegaconf import DictConfig, OmegaConf
 from tqdm import tqdm
+import numpy as np
 
 from .logging import TrainingLogger
 from .checkpointing import CheckpointManager
@@ -177,7 +178,6 @@ class DistillationTrainer:
     
     @torch.no_grad()
     def validate(self):
-
         self.student.eval()
         
         total_loss = 0.0
@@ -185,14 +185,20 @@ class DistillationTrainer:
         total_ce_loss = 0.0
         num_batches = 0
         
+        # Metrics tracking
+        teacher_correct_total = 0
+        student_correct_total = 0
+        teacher_total_loss = 0.0
+        student_total_loss = 0.0
+        total_tokens = 0
+        
         for batch in self.val_loader:
             input_ids = batch['input_ids'].long().to(self.device)
             attention_mask = batch['attention_mask'].to(self.device)
             labels = batch['labels'].long().to(self.device)
             
-            with torch.autocast(device_type=self.device.type, dtype = torch.float16, enabled=self.cfg.training.mixed_precision):
+            with torch.autocast(device_type=self.device.type, dtype=torch.float16, enabled=self.cfg.training.mixed_precision):
                 
-                # Forward pass
                 teacher_logits = self.teacher(
                     input_ids=input_ids,
                     attention_mask=attention_mask,
@@ -205,7 +211,7 @@ class DistillationTrainer:
                     return_logits=True
                 )
             
-                # Compute loss
+                # Compute distillation loss
                 loss, kl_loss, ce_loss = self.distillation_loss(
                     student_logits=student_logits,
                     teacher_logits=teacher_logits,
@@ -214,6 +220,37 @@ class DistillationTrainer:
                     alpha=self.alpha
                 )
                 
+            # Calculate accuracy and perplexity
+            mask = labels != -100
+                
+            if mask.sum() > 0:
+                vocab_size = teacher_logits.size(-1)
+                teacher_flat = teacher_logits.view(-1, vocab_size)
+                student_flat = student_logits.view(-1, vocab_size)
+                labels_flat = labels.view(-1)
+                mask_flat = mask.view(-1)
+                    
+                # Get masked tokens
+                teacher_masked = teacher_flat[mask_flat]
+                student_masked = student_flat[mask_flat]
+                labels_masked = labels_flat[mask_flat]
+                
+                # Predictions
+                teacher_preds = teacher_masked.argmax(dim=-1)
+                student_preds = student_masked.argmax(dim=-1)
+                
+                # Accuracy
+                teacher_correct_total += (teacher_preds == labels_masked).sum().item()
+                student_correct_total += (student_preds == labels_masked).sum().item()
+                    
+                # Perplexity
+                teacher_ce = F.cross_entropy(teacher_masked, labels_masked, reduction='sum')
+                student_ce = F.cross_entropy(student_masked, labels_masked, reduction='sum')
+                    
+                teacher_total_loss += teacher_ce.item()
+                student_total_loss += student_ce.item()
+                total_tokens += labels_masked.numel()
+            
             total_loss += loss.item()
             total_kl_loss += kl_loss
             total_ce_loss += ce_loss
@@ -221,14 +258,25 @@ class DistillationTrainer:
         
         self.student.train()
         
+        # Compute averages
         avg_loss = total_loss / num_batches
         avg_kl_loss = total_kl_loss / num_batches
         avg_ce_loss = total_ce_loss / num_batches
         
+        # Compute metrics
+        avg_teacher_accuracy = teacher_correct_total / total_tokens if total_tokens > 0 else 0.0
+        avg_student_accuracy = student_correct_total / total_tokens if total_tokens > 0 else 0.0
+        avg_teacher_perplexity = np.exp(teacher_total_loss / total_tokens) if total_tokens > 0 else float('inf')
+        avg_student_perplexity = np.exp(student_total_loss / total_tokens) if total_tokens > 0 else float('inf')
+        
         return {
             'val_loss': avg_loss,
             'val_kl_loss': avg_kl_loss,
-            'val_ce_loss': avg_ce_loss
+            'val_ce_loss': avg_ce_loss,
+            'teacher_accuracy': avg_teacher_accuracy,
+            'teacher_perplexity': avg_teacher_perplexity,
+            'student_accuracy': avg_student_accuracy,
+            'student_perplexity': avg_student_perplexity,
         }
     
     def train(self):
@@ -310,7 +358,11 @@ class DistillationTrainer:
                                 step=self.global_step,
                                 val_loss=val_metrics['val_loss'],
                                 val_kl_loss=val_metrics['val_kl_loss'],
-                                val_ce_loss=val_metrics['val_ce_loss']
+                                val_ce_loss=val_metrics['val_ce_loss'],
+                                student_perplexity = val_metrics["student_perplexity"],
+                                student_accuracy = val_metrics["student_accuracy"],
+                                teacher_perplexity = val_metrics["teacher_perplexity"],
+                                teacher_accuracy = val_metrics["teacher_accuracy"],
                             )
                         
                         # Save checkpoint

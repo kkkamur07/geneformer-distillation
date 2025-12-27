@@ -33,7 +33,7 @@ def calculate_metrics(logits, labels):
     
     return acc, ppl
 
-@hydra.main(version_base=None, config_path="/home/krrish/Desktop/Programming/geneformer-scratch/configs", config_name="config")
+@hydra.main(version_base=None, config_path="../configs", config_name="config")
 def main(cfg: DictConfig):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")

@@ -144,10 +144,15 @@ def main(cfg: DictConfig):
     
     trainer.train()
     
+    best_val_loss = trainer.checkpoint_manager.best_val_loss
+    
     # Close logger
     logger.close()
     
     print("Training complete!")
+    
+    return best_val_loss
+    
 
 
 if __name__ == "__main__":
