@@ -10,6 +10,10 @@ This module defines `TeacherModel`, a wrapper around a pre-trained `BertForMaske
 Classes:
     TeacherModel: The frozen teacher model.
 
+Arguments:
+    model_path (str): Path to the directory containing the pre-trained Geneformer model.
+    device (torch.device): Device to load the model onto.
+
 Usage Example:
     ```python
     teacher = TeacherModel(

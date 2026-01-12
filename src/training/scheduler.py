@@ -8,6 +8,11 @@ This module implements custom learning rate schedules.
 Classes:
     WarmCosineLR: Linear warmup + Cosine Annealing learning rate scheduler.
 
+Math:
+    - Warmup Phase: lr = base_lr * (step / warmup_steps)
+    - Cosine Phase: lr = 0.5 * base_lr * (1 + cos(pi * progress))
+      where progress = (step - warmup_steps) / (total_steps - warmup_steps)
+
 Usage Example:
     ```python
     optimizer = AdamW(model.parameters(), lr=1e-4)

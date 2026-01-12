@@ -13,6 +13,15 @@ Student model. It handles the complete training loop, including:
 Classes:
     DistillationTrainer: Orchestrates the distillation process.
 
+Dependencies:
+    - torch
+    - omegaconf
+    - tqdm
+    - src.training.logging
+    - src.training.checkpointing
+    - src.training.accumulator
+    - src.training.scheduler
+
 Usage Example:
     ```python
     trainer = DistillationTrainer(
@@ -30,6 +39,11 @@ Usage Example:
         for batch in trainer.train_loader:
              metrics = trainer.train_step(batch)
     ```
+
+Notes:
+    The distillation loss is a weighted sum of KL Divergence (student vs teacher logits)
+    and standard Cross Entropy (student vs ground truth). The weight is controlled by 
+    the `alpha` parameter in the configuration.
 """
 import torch
 import torch.nn as nn

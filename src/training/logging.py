@@ -10,6 +10,11 @@ for the training pipeline. It handles:
 
 Classes:
     TrainingLogger: Main logging class instance.
+    _PrintCapture (Internal): Helper class to redirect stdout.
+
+Attributes:
+    log_file (Path): Path to the standard text log file.
+    metrics_file (Path): Path to the JSONL structured metrics file.
 
 Usage Example:
     ```python

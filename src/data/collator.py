@@ -10,6 +10,12 @@ for the model. Key functions:
 Classes:
     GeneDataCollator: Handles padding and batching.
 
+Parameters:
+    - vocab_size: Size of vocabulary (default: 25426)
+    - mask_token_id: ID for token masking (default: 1)
+    - pad_token_id: ID for padding (default: 0)
+    - mlm_probability: Probability of masking a token (default: 0.15)
+
 Usage Example:
     ```python
     collator = GeneDataCollator(pad_token_id=0)

@@ -5,6 +5,11 @@ A standalone script for performing rapid, ad-hoc evaluation of trained models.
 It loads a student and teacher model, runs inference on a small subset of data,
 and compares metrics like Accuracy and Perplexity to gauge distillation progress.
 
+Metrics Reported:
+    - MLM Accuracy: Proportion of correctly predicted masked tokens.
+    - Perplexity: Exponentiated cross-entropy loss (model uncertainty).
+    - Teacher - Student Gap: Difference in performance between models.
+
 Usage Example:
     ```bash
     python -m src.evals.quick

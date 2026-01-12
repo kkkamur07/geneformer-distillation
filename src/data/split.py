@@ -8,6 +8,10 @@ random seed and saves the resulting splits to disk for reproducible training.
 Functions:
     split: Main execution function to load, split, and save datasets.
 
+Constants:
+    OUTPUT_DIR: Directory where splits will be saved.
+    DATA_PATH: Path to source dataset.
+
 Usage Example:
     Run directly as a script:
     ```bash

@@ -9,6 +9,10 @@ Hugging Face Datasets (Arrow files). It handles:
 Classes:
     GeneformerDataset: PyTorch map-style dataset for Geneformer data.
 
+Dependencies:
+    - datasets (Hugging Face)
+    - torch
+
 Usage Example:
     ```python
     dataset = GeneformerDataset("/path/to/dataset.dataset")

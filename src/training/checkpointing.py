@@ -10,6 +10,17 @@ Functions included:
 Functions:
     save_checkpoint: Serialize model state to disk.
     load_checkpoint: Deserialize model state from disk.
+    _extract_config_from_model: Helper to extract model config if available.
+    _verify_model_matches: Helper to ensure loaded checkpoint matches model architecture.
+
+Checkpoint Structure:
+    The saved `.pt` file is a dictionary containing:
+    - "model": State dict of the model.
+    - "optimizer": State dict of the optimizer.
+    - "scheduler": State dict of the scheduler.
+    - "step": Current global training step.
+    - "config": Configuration dictionary.
+    - "val_loss": Best or current validation loss.
 
 Usage Example:
     ```python

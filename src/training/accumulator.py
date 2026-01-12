@@ -9,6 +9,11 @@ This module defines the `AmpGrad` utility class. It abstracts away the complexit
 Classes:
     AmpGrad: Wrapper around optimizer and GradScaler.
 
+Arguments:
+    optimizer (torch.optim.Optimizer): The optimizer to wrap.
+    accum (int): Number of steps to accumulate gradients before updating.
+    amp (bool): Whether to enable Automatic Mixed Precision (uses torch.amp.GradScaler).
+
 Usage Example:
     ```python
     optimizer = torch.optim.AdamW(model.parameters())

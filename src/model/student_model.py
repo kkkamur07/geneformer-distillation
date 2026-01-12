@@ -9,6 +9,14 @@ target model for the knowledge distillation process.
 Classes:
     StudentModel: The trainable student model.
 
+Configuration Defaults:
+    - vocab_size: 25426
+    - hidden_size: 256
+    - num_hidden_layers: 6
+    - num_attention_heads: 8
+    - intermediate_size: 1024
+    - max_position_embeddings: 2048
+
 Usage Example:
     ```python
     student = StudentModel(

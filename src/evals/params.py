@@ -4,6 +4,9 @@ Available Parameters Inspection Script.
 A utility script to quickly instantiate the StudentModel architecture and print
 the number of trainable parameters. Useful for sanity checking model size configurations.
 
+Output:
+    Prints the total count of parameters in the model configuration.
+
 Usage Example:
     ```bash
     python -m src.evals.params

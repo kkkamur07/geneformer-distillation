@@ -11,6 +11,14 @@ It integrates all components:
 Functions:
     main(cfg): Main function decorated with @hydra.main.
 
+Configuration Groups:
+    - names: Experiment naming.
+    - teacher: Teacher model paths.
+    - model: Student model architecture.
+    - data: Dataset paths and loader settings.
+    - training: Hyperparameters (lr, batch_size, etc.).
+    - hardware: Device selection.
+
 Usage Example:
     ```bash
     # Run with default config
