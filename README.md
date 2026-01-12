@@ -4,6 +4,8 @@ This is a part of our seminar at the Institute of Statistics at LMU Munich.
 
 Here we are trying to distill 4M, 3M, & 2M parameter models from the 10M parameter Geneformer model, which is considered one of the seminal works in network biology. We have managed to compress the model from 10M to 4M (approx. 2.5x reduction) using around 1/25th of the data and 1/20th of the training budget, while maintaining reasonable performance.
 
+**You can find the detailed report of our experiment at our [Github Page](https://kkkamur07.github.io/geneformer-distillation/) as well**
+
 ## Resources & Checkpoints
 
 All distilled models, checkpoints, and associated files are available on Hugging Face and GitHub.
