@@ -1,4 +1,27 @@
-# Implements learning rate scheduling strategies.
+"""
+Learning Rate Scheduler Module.
+
+This module implements custom learning rate schedules.
+- `WarmCosineLR`: A scheduler that implements linear warmup followed by a cosine decay
+  schedule. It is essential for stable training of Transformer models.
+
+Classes:
+    WarmCosineLR: Linear warmup + Cosine Annealing learning rate scheduler.
+
+Usage Example:
+    ```python
+    optimizer = AdamW(model.parameters(), lr=1e-4)
+    scheduler = WarmCosineLR(
+        optimizer, 
+        warmup_steps=1000, 
+        total_steps=50000, 
+        base_lr=1e-4
+    )
+    
+    # In training loop
+    scheduler.step()
+    ```
+"""
 import math
 
 class WarmCosineLR:

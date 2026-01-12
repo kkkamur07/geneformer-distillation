@@ -1,4 +1,25 @@
-# Main entry point for running the distillation training.
+"""
+Main Training Entry Point.
+
+This script orchestrates the entire knowledge distillation training pipeline.
+It integrates all components:
+- Hydra configuration management.
+- Model initialization (Student and Teacher).
+- Dataset loading and DataLoader creation.
+- DistillationTrainer initialization and execution.
+
+Functions:
+    main(cfg): Main function decorated with @hydra.main.
+
+Usage Example:
+    ```bash
+    # Run with default config
+    python src/main.py
+    
+    # Run with override
+    python src/main.py training.batch_size=16
+    ```
+"""
 import hydra
 from omegaconf import DictConfig, OmegaConf
 import torch

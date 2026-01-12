@@ -1,4 +1,21 @@
-# Data collator for batching and masking gene sequences.
+"""
+Data Collator for Masked Language Modeling.
+
+This module implements `GeneDataCollator`, responsible for preparing batches of data
+for the model. Key functions:
+- Padding variable-length sequences to the maximum length in the batch.
+- Creating attention masks.
+- (Future/Implicit) Handling Masked Language Modeling (MLM) masking strategies if extended.
+
+Classes:
+    GeneDataCollator: Handles padding and batching.
+
+Usage Example:
+    ```python
+    collator = GeneDataCollator(pad_token_id=0)
+    dataloader = DataLoader(dataset, collate_fn=collator, batch_size=32)
+    ```
+"""
 import torch
 from typing import List, Dict, Any
 

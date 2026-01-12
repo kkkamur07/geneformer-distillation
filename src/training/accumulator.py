@@ -1,4 +1,28 @@
-# Manages gradient accumulation and mixed precision scaling.
+"""
+Gradient Accumulation and Mixed Precision Wrapper.
+
+This module defines the `AmpGrad` utility class. It abstracts away the complexity of:
+- Gradient Accumulation: Stepping the optimizer only after N batches.
+- Automatic Mixed Precision (AMP): Managing the GradScaler for fp16 training on CUDA devices.
+- Providing unified methods for `backward()`, `step()`, and `zero_grad()`.
+
+Classes:
+    AmpGrad: Wrapper around optimizer and GradScaler.
+
+Usage Example:
+    ```python
+    optimizer = torch.optim.AdamW(model.parameters())
+    amp_grad = AmpGrad(optimizer, accum=4, amp=True)
+    
+    # In training loop:
+    loss = model(input)
+    amp_grad.backward(loss)
+    
+    if amp_grad.should_step():
+        amp_grad.step()
+        amp_grad.zero_grad()
+    ```
+"""
 import torch
 
 class AmpGrad:

@@ -1,4 +1,19 @@
-# Utilities for splitting datasets into train and validation sets.
+"""
+Dataset Splitting Utility.
+
+This script handles the partitioning of the main Geneformer dataset (Arrow format)
+into training and validation sets. It ensures deterministic splitting based on a
+random seed and saves the resulting splits to disk for reproducible training.
+
+Functions:
+    split: Main execution function to load, split, and save datasets.
+
+Usage Example:
+    Run directly as a script:
+    ```bash
+    python -m src.data.split
+    ```
+"""
 from pathlib import Path
 from datasets import load_from_disk
 

@@ -1,40 +1,81 @@
-# Geneformer-Distilled 4M
+# Geneformer-Distilled
 
-This is a part of our seminar at the instite of statistics at LMU Munich. 
+This is a part of our seminar at the Institute of Statistics at LMU Munich. 
 
-Here we are trying to distill a 4M parameter model from 10M parameter model which is the geneformer, considered one of the seminal work in network biology. We have managed to compress the model from 10M to 4M around 2.5x reduction with around 1/25th of the data and 1/100th of the training with with identical things. It was abit challenging to replicate this paper because there were a lot of things missings like 
+Here we are trying to distill a 4M parameter model from 10M parameter model which is the Geneformer, considered one of the seminal work in network biology. We have managed to compress the model from 10M to 4M around 2.5x reduction with around 1/25th of the data and 1/100th of the training with with identical things. It was a bit challenging to replicate this paper because there were a lot of things missing.
 
-1. Even to download files from hugging face is a mess
-2. Needed to create a custom data collator due to variable length sampling $\to$ to save computing
+## Challenges Replicating Geneformer
+
+1. Even to download files from Hugging Face is a mess.
+2. Needed to create a custom data collator due to variable length sampling $\to$ to save computing.
 3. Due to variable sequence length failed to use `torch.compile()` which builds a dynamic CUDA graph. 
 4. Compute challenges, the data is massive with around 27 Mn rows and 500 tokens per sequences.  
 5. Data was pretokenized that helped but also it was the most important part of the paper, needed to build our own collator. 
 6. General Clarity Needed on what is the BERT masking strategy. They used the default by they should have mentioned. 
-7. The dataset for the V2 models are not being provided 104 M
-8. Working with a 27 Mn rows with 500 tokens amounts to 10B tokens approx, really difficult to work with it. Major optimizations in dataset.py
+7. The dataset for the V2 models are not being provided 104 M.
+8. Working with a 27 Mn rows with 500 tokens amounts to 10B tokens approx, really difficult to work with it. Major optimizations in dataset.py.
 9. Problem of the unavailability of the 104Mn rows dataset so we couldn't validate the V2 & V3 version of the experiment. 
 
-In general it proved difficult to replicate but not impossible. 
+## Project Structure
 
-We have the following training metric 
-![Training](notebooks/training_metrics_4.5M.png) 
+- **src/**: Contains all source code for the project (models, trainer, data loaders, etc.).
+- **configs/**: Configuration files for Hydra. `config.yaml` contains all hyperparameters and paths.
+- **mainData/**: Directory storage for datasets.
+- **outputs/**: Contains training logs and saved checkpoints.
+- **notebooks/**: Jupyter notebooks for experiments and visualizations.
 
-and the weights of the distilled models can be found in the outputs/checkpoints we are going to use the model_best.pt
+## How to Run
 
-To run the evaluations you need to do : 
-
-```python
-    python3 -m src.evals.quick
+### 1. Data Preparation
+Ensure your datasets are located in `mainData/`. The project expects Arrow format datasets.
+To split the dataset into training and validation sets, run:
+```bash
+python -m src.data.split
 ```
 
-As we have been training a language model with masking we are evaluating it on 
+### 2. Configuration
+All experiment configurations are managed via Hydra in `configs/config.yaml`. You can modify model size, learning rates, batch sizes, and paths there.
 
-1. Accuracy : Of the masking of the tokens
-2. Perplexity : Measure of how confident the model is while predicting the masked tokens
+### 3. Training
+To start training the distillation process, use the `src.main` module.
+For long running training sessions, it is recommended to use `nohup`:
 
-The current numbers suggests that everything is working just we need to train our model more for more duration because currently it is only being trainined on 1.2 Mn rows instead of 27 Mn rows so it has not seen enough data. 
+```bash
+nohup python -m src.main > training.log 2>&1 &
+```
+You can monitor the training progress by tailing the log file: `tail -f training.log` or checking the logs in `outputs/logs`.
 
-Update : If we train it more then the accuracy improves over time but the marginal gains are less, we increased the training steps from 61000 to 91000, we saw on improvement of 2% of MLM accuracy and perplexity improved by 40%.
+### 4. Evaluation
+To run quick evaluations on the trained models (Perplexity and MLM Accuracy):
+
+```bash
+python3 -m src.evals.quick
+```
+
+## Outputs and Checkpoints
+
+The training artifacts are saved in the `outputs/` directory.
+We have trained models of various sizes. You can find their checkpoints in specific directories:
+
+- **4.3M Parameters**: `outputs/checkpoints_/geneformer4.3M/`
+- **3M Parameters**: `outputs/checkpoints_/geneformer3M/`
+- **2M Parameters**: `outputs/checkpoints_/geneformer2M/`
+
+## Results
+
+In general it proved difficult to replicate but not impossible. 
+We have the following training metric for the **4.5M Model**:
+
+![Training](notebooks/training_metrics_4.5M.png) 
+
+The weights of the distilled models can be found in the outputs/checkpoints. We are going to use `model_best.pt`.
+
+### Metrics Reference
+
+1. **Accuracy**: Of the masking of the tokens.
+2. **Perplexity**: Measure of how confident the model is while predicting the masked tokens.
+
+Current numbers suggest that everything is working. If we train it more then the accuracy improves over time but the marginal gains are less. We increased the training steps from 61000 to 91000, we saw an improvement of 2% of MLM accuracy and perplexity improved by 40%.
 
 ```bash
 ============================================================
@@ -44,11 +85,10 @@ Perplexity      | 15.40              | 22.48              | +7.08
 ============================================================
 ```
 
-We have seen the data scaling working here, if you train it on more data the results including the MLM Accuracy and the perplexity improves, though measuing perplexity here doesn't make much sense except to predict the models confidence on the Masked Predictions. 
+#### Results for Geneformer 3M
 
-Currently training the 3M geneformer model with the minor config difference of `hidden_size` or `d_model` being reduced from 128 to 96 and the `intermediate size` ratio being kept the same at **4**
+Currently training the 3M geneformer model with the minor config difference of `hidden_size` or `d_model` being reduced from 128 to 96.
 
-#### Results for Geneformer3M 
 ![Training](notebooks/training_metrics_3M.png) 
 
 ```bash
@@ -59,10 +99,7 @@ Perplexity      | 15.59              | 38.91              | +23.32
 ============================================================
 ```
 
-I must say that, this might not be a bad down shrinking, probably training them more will improve the accuracy for sure, because it has not seen enough data, maybe we should train this more around 50000 steps more.
-
-Did train for 50000 more steps, I think the model has converged and training is not helping here any more. May be related to more capacity based issues rather than hyper parameters and stuff like that. 
-
-So a new learning, I think I might have observed double descent in the Geneformer. Suddenly after 150000 steps the model started to converge more, so I saw accuracy improvements from 0.21 to 0.24, now almost performing as similarly as the teacher model. This makes me imagine what if we train it more, will probably do that and what are the limits of distillation. 
-
-Trained from 300000 steps to 600000 steps and there was only a minor bump in accuracy of around 1%, till 300000 thousand it was also at around 24%, now it is at 25%, pretty close to earlier. So the training gains are diminishing, better not to train beyond this.
+**Training observations**:
+- **Data Scaling**: Training on more data improves MLM Accuracy and perplexity.
+- **Double Descent**: observed around 150,000 steps where the model started converging more rapidly again.
+- **Saturation**: After increasing steps from 300,000 to 600,000, only a minor bump in accuracy (~1%) was observed.

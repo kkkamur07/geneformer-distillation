@@ -1,4 +1,26 @@
-# Wrapper for the pre-trained Geneformer teacher model.
+"""
+Teacher Model Wrapper.
+
+This module defines `TeacherModel`, a wrapper around a pre-trained `BertForMaskedLM`
+(Geneformer). It is responsible for:
+- Loading pre-trained weights.
+- Freezing all parameters to ensure the Teacher remains static during distillation.
+- Providing a simplified forward pass interface returning logits.
+
+Classes:
+    TeacherModel: The frozen teacher model.
+
+Usage Example:
+    ```python
+    teacher = TeacherModel(
+        model_path="/path/to/geneformer",
+        device=torch.device("cuda")
+    )
+    
+    # Forward pass (returns logits)
+    logits = teacher(input_ids, attention_mask)
+    ```
+"""
 import torch.nn as nn
 import torch
 from transformers import BertForMaskedLM

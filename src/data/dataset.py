@@ -1,4 +1,22 @@
-# Custom Dataset class for loading Geneformer data.
+"""
+Geneformer Dataset Implementation.
+
+This module implements `GeneformerDataset`, a PyTorch Dataset wrapper around
+Hugging Face Datasets (Arrow files). It handles:
+- Efficient on-disk loading of large gene sequence datasets.
+- Accessing sequences and their associated length properties.
+
+Classes:
+    GeneformerDataset: PyTorch map-style dataset for Geneformer data.
+
+Usage Example:
+    ```python
+    dataset = GeneformerDataset("/path/to/dataset.dataset")
+    print(len(dataset))
+    
+    item = dataset[0] # Returns dict with input_ids, length, etc.
+    ```
+"""
 from torch.utils.data import Dataset
 from datasets import load_from_disk
 

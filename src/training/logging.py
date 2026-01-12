@@ -1,4 +1,30 @@
-# Handles training process logging and metrics tracking.
+"""
+Training Logging and Metrics Module.
+
+This module provides the `TrainingLogger` class, which centralizes all logging operations
+for the training pipeline. It handles:
+- File-based and Console-based logging.
+- JSONL formatted text for metric tracking (loss, learning rate, etc.).
+- Capturing and redirecting `stdout` to log files.
+- Utility methods for logging model summaries and configurations.
+
+Classes:
+    TrainingLogger: Main logging class instance.
+
+Usage Example:
+    ```python
+    logger = TrainingLogger(log_dir="./logs", experiment_name="exp_1")
+    
+    # Log general info
+    logger.info("Training started")
+    
+    # Log metrics
+    logger.log_metrics(step=10, metrics={"loss": 0.5, "accuracy": 0.9})
+    
+    # Close when done (restores stdout)
+    logger.close()
+    ```
+"""
 import sys
 import logging
 from pathlib import Path

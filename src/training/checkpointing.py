@@ -1,4 +1,33 @@
-# Utilities for saving and managing model checkpoints.
+"""
+Model Checkpointing Utilities.
+
+This module manages the saving and loading of model checkpoints during training.
+Functions included:
+- `save_checkpoint`: Saves model state, optimizer state, scheduler state, and config.
+  It maintains distinct 'latest' and 'best' checkpoints.
+- `load_checkpoint`: Restores model states from disk, ensuring configuration compatibility.
+
+Functions:
+    save_checkpoint: Serialize model state to disk.
+    load_checkpoint: Deserialize model state from disk.
+
+Usage Example:
+    ```python
+    # Saving
+    save_checkpoint(
+        model=model,
+        optimizer=optimizer,
+        scheduler=scheduler,
+        step=1000,
+        out_dir="./checkpoints",
+        val_loss=0.45,
+        is_best=True
+    )
+    
+    # Loading
+    load_checkpoint(model, "./checkpoints/model_best.pt")
+    ```
+"""
 from __future__ import annotations
 import os
 from pathlib import Path

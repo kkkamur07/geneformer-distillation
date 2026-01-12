@@ -1,4 +1,15 @@
-# A file where we do quick evaluation.
+"""
+Quick Evaluation Script.
+
+A standalone script for performing rapid, ad-hoc evaluation of trained models.
+It loads a student and teacher model, runs inference on a small subset of data,
+and compares metrics like Accuracy and Perplexity to gauge distillation progress.
+
+Usage Example:
+    ```bash
+    python -m src.evals.quick
+    ```
+"""
 
 import torch
 import torch.nn.functional as F

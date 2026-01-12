@@ -1,4 +1,26 @@
-# Defines the architecture for the smaller student model.
+"""
+Student Model Architecture.
+
+This module defines `StudentModel`, the compact Transformer architecture that will be
+trained. It initializes a `BertForMaskedLM` with a custom, smaller configuration
+(fewer layers, headers, hidden dimensions) compared to the teacher. This is the
+target model for the knowledge distillation process.
+
+Classes:
+    StudentModel: The trainable student model.
+
+Usage Example:
+    ```python
+    student = StudentModel(
+        vocab_size=25426,
+        hidden_size=256,
+        num_hidden_layers=6,
+        device=torch.device("cuda")
+    )
+    
+    logits = student(input_ids)
+    ```
+"""
 import torch
 import torch.nn as nn
 from transformers import BertForMaskedLM, BertConfig

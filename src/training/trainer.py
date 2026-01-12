@@ -1,4 +1,36 @@
-# Implements the knowledge distillation training loop and logic.
+"""
+Knowledge Distillation Trainer Module.
+
+This module implements `DistillationTrainer`, a specialized training class designed for
+knowledge distillation from a pre-trained Teacher model (BERT-based) to a smaller
+Student model. It handles the complete training loop, including:
+- Forward passes for both Teacher and Student.
+- Calculation of Distillation Loss (KL Divergence) and Cross Entropy Loss.
+- Mixed precision training (AMP) via `AmpGrad`.
+- Gradient accumulation.
+- Validation loops for metric tracking.
+
+Classes:
+    DistillationTrainer: Orchestrates the distillation process.
+
+Usage Example:
+    ```python
+    trainer = DistillationTrainer(
+        student=my_student_model,
+        teacher=my_teacher_model,
+        train_loader=my_train_loader,
+        val_loader=my_val_loader,
+        optimizer=my_optimizer,
+        cfg=my_hydra_config,
+        device=torch.device("cuda")
+    )
+    
+    # Run training loop
+    for epoch in range(epochs):
+        for batch in trainer.train_loader:
+             metrics = trainer.train_step(batch)
+    ```
+"""
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

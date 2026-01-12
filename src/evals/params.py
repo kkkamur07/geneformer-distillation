@@ -1,4 +1,14 @@
-# Script to calculate and print model parameter count.
+"""
+Available Parameters Inspection Script.
+
+A utility script to quickly instantiate the StudentModel architecture and print
+the number of trainable parameters. Useful for sanity checking model size configurations.
+
+Usage Example:
+    ```bash
+    python -m src.evals.params
+    ```
+"""
 from src.model.student_model import StudentModel
 
 def main(): 
