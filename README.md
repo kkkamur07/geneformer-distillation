@@ -19,6 +19,8 @@ All distilled models, checkpoints, and associated files are available on Hugging
 - **outputs/**: Contains training logs and saved checkpoints.
 - **notebooks/**: Jupyter notebooks for experiments and visualizations.
 
+> Each module has been documentation in the starting of the file. You can refer them to understand what is in the file. 
+
 ## How to Run
 
 ### 1. Data Preparation
