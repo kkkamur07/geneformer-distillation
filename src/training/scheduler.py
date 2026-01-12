@@ -1,3 +1,4 @@
+# Implements learning rate scheduling strategies.
 import math
 
 class WarmCosineLR:

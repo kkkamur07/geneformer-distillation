@@ -1,3 +1,4 @@
+# Defines the architecture for the smaller student model.
 import torch
 import torch.nn as nn
 from transformers import BertForMaskedLM, BertConfig

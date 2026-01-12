@@ -1,3 +1,4 @@
+# Manages gradient accumulation and mixed precision scaling.
 import torch
 
 class AmpGrad:

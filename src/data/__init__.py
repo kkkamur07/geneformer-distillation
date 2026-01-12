@@ -1,3 +1,4 @@
+# Initializes data module and defines path constants.
 from pathlib import Path
 
 PARENT_PATH = Path("/home/krrish/Desktop/Programming/geneformer-scratch/src/data/")

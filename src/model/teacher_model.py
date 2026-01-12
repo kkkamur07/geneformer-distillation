@@ -1,3 +1,4 @@
+# Wrapper for the pre-trained Geneformer teacher model.
 import torch.nn as nn
 import torch
 from transformers import BertForMaskedLM

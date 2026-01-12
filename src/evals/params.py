@@ -1,3 +1,4 @@
+# Script to calculate and print model parameter count.
 from src.model.student_model import StudentModel
 
 def main(): 

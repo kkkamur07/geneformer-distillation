@@ -1,3 +1,4 @@
+# Data collator for batching and masking gene sequences.
 import torch
 from typing import List, Dict, Any
 

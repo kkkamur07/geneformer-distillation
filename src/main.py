@@ -1,3 +1,4 @@
+# Main entry point for running the distillation training.
 import hydra
 from omegaconf import DictConfig, OmegaConf
 import torch

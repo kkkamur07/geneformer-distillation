@@ -1,3 +1,4 @@
+# Handles training process logging and metrics tracking.
 import sys
 import logging
 from pathlib import Path

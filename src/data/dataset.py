@@ -1,3 +1,4 @@
+# Custom Dataset class for loading Geneformer data.
 from torch.utils.data import Dataset
 from datasets import load_from_disk
 
