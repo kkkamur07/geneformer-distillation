@@ -169,3 +169,5 @@ geneformer-hf/
 data/
 models/
 outputs/best
+
+notebooks/**/*.ipynb

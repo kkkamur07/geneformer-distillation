@@ -127,7 +127,7 @@ The encoding process transforms raw data into a sequence of tokens through the f
 This rank-based representation is robust to variations in sequencing depth and ensures that the model learns the hierarchical structure of gene regulation rather than absolute expression levels.
 
 \subsection{Model Architecture and Pretraining}
-Geneformer is built upon a standard Transformer encoder architecture, specifically adapted for the constraints of single-cell data. The model consists of a stack of six transformer encoder units, a depth chosen based on the maximum data scale available for effective pretraining.
+Geneformer is built upon a standard Transformer encoder architecture, specifically adapted for the constraints of single-cell data. The model consists of a stack of \textit{six transformer encoder units}, a depth chosen based on the maximum data scale available for effective pretraining.
 
 The specific architectural hyperparameters are as follows:
 \begin{itemize}
@@ -172,7 +172,7 @@ This forces the model to learn the fundamental "grammar" of gene networks in a s
 \section{Our Contribution: Knowledge Distillation}
 
 \subsection{Problem Statement}
-While Geneformer is the state of the art model, it is computationally expensive. The original model contains 10 million parameters and required training on 12 V100 GPUs for days \cite{agarwalla2023presentation}. This creates a barrier to entry for researchers with limited resources. Additionally, the dataset is massive (30M rows), causing standard training loops to crash RAM on consumer hardware \cite{agarwalla2023presentation}.
+While Geneformer is the state of the art model, it is computationally expensive. The original model contains 10 million parameters and required training on 12 V100 GPUs for 3 days \cite{agarwalla2023presentation}. This creates a barrier to entry for researchers with limited resources. Additionally, the dataset is massive (30M rows), causing standard training loops to crash RAM on consumer hardware \cite{agarwalla2023presentation}.
 
 \subsection{Proposed Solution: Teacher-Student Distillation}
 To address this, we implemented \textbf{Knowledge Distillation (KD)} \cite{agarwalla2023presentation}. This technique compresses the knowledge of a large "Teacher" model into a smaller, lighter "Student" model.
@@ -194,7 +194,7 @@ Our goal was to train a Student model with approximately 40-50\% of the paramete
 \end{figure}
 
 \subsection{Distillation Methodology}
-To investigate the limits of model compression, we established a distillation framework involving a frozen Teacher and multiple variable-sized Student models \cite{agarwalla2023presentation}.
+To investigate the limits of model compression, we established a distillation framework involving a \textbf{frozen Teacher} and \textbf{multiple variable-sized Student} models \cite{agarwalla2023presentation}.
 
 \begin{enumerate}
     \item \textbf{Teacher Model:} The original pretrained Geneformer (10M parameters). This model remains frozen during training to provide stable soft-label targets.
@@ -237,7 +237,7 @@ Where:
 \end{itemize}
 By learning from the Teacher's soft labels, the Student learns the "dark knowledge" the subtle relationships between classes that the Teacher has learned.
 
-For the distillation process, we set the loss weighting coefficient $\alpha = 0.65$ to balance the contributions of soft predictions from the Teacher model and hard ground-truth labels. It should be noted that no systematic hyperparameter optimization was conducted in this study. We believe that comprehensive hyperparameter tuning, including optimization of $\alpha$, temperature $T$ \& learning rate  would yield substantial improvements in Student model performance. 
+For the distillation process, we set the loss weighting coefficient $\alpha = 0.65$ to balance the contributions of soft predictions from the Teacher model and hard ground-truth labels. It should be noted that no systematic hyperparameter optimization was conducted in this study. We believe that \textit{comprehensive hyperparameter tuning, including optimization of $\alpha$, temperature $T$ \& learning rate  would yield substantial improvements in Student model performance.} 
 
 \subsection{Engineering Optimizations}
 To enable training on a single GPU, we implemented critical engineering optimizations to handle the computational constraints:
@@ -245,7 +245,7 @@ To enable training on a single GPU, we implemented critical engineering optimiza
 \subsubsection{Dynamic Length-Grouped Sampling}
 Standard training pipelines typically sample batches randomly. However, as illustrated in Figure \ref{fig:seq_dist}, the Genecorpus-30M dataset exhibits a highly skewed distribution of sequence lengths. While the maximum input size is 2,048 tokens, the median sequence length is only 234 tokens \cite{agarwalla2023presentation}.
 
-In a standard random batch, if a single long sequence (e.g., 2,048) is paired with many short sequences (e.g., 200), all short sequences must be padded with zeros to match the longest one. This results in the GPU spending the vast majority of its compute power processing empty "pad" tokens.
+In a standard random batch, if a single long sequence (e.g., 2,048) is paired with many short sequences (e.g., 200), all short sequences must be padded with zeros to match the longest one. This results in the GPU spending the vast majority of its compute power \textbf{processing empty "pad" tokens.}
 
 To solve this, **Dynamic Length-Grouped Sampling** was implemented:
 \begin{enumerate}
@@ -280,15 +280,22 @@ Evaluating these metrics ensures that the Knowledge Distillation process success
 
 \begin{table}[H]
     \centering
-    \begin{tabular}{lccc}
+    \renewcommand{\arraystretch}{1.2} % Adds vertical space for readability
+    \begin{tabular}{llccc}
         \toprule
-        \textbf{Metric} & \textbf{Teacher} & \textbf{Student} & \textbf{Gap} \\
+        \textbf{Model Variant} & \textbf{Metric} & \textbf{Teacher} & \textbf{Student} & \textbf{Gap} \\
         \midrule
-        MLM Accuracy & 0.3072 & 0.2606 & 0.0466 \\
-        Perplexity & 15.28 & 21.36 & 6.08 \\
+        \textbf{4.3M Parameters} & MLM Accuracy & 0.2981 & 0.2490 & -0.0491 \\
+        (\textit{Best Balance})  & Perplexity   & 16.76  & 24.25  & +7.49 \\
+        \midrule
+        \textbf{3M Parameters}   & MLM Accuracy & 0.3049 & 0.2034 & -0.1025 \\
+                                 & Perplexity   & 16.32  & 34.32  & +18.00 \\
+        \midrule
+        \textbf{2M Parameters}   & MLM Accuracy & 0.3049 & 0.1888 & -0.1161 \\
+                                 & Perplexity   & 15.77  & 40.30  & +24.52 \\
         \bottomrule
     \end{tabular}
-    \caption{Comparison of Pretraining Metrics. The Student retains significant linguistic capability despite a $\sim$50\% reduction in parameters \cite{agarwalla2023presentation}.}
+    \caption{Comparison of Pretraining Metrics across different Student model sizes. While the 4.3M model maintains a close proximity to the Teacher's perplexity, the 3M and 2M models show a drop in prediction capability, as indicated by the sharp rise in perplexity \cite{agarwalla2023presentation}.}
     \label{tab:pretraining}
 \end{table}
 
@@ -299,7 +306,7 @@ Having validated the Student's general representational power, we validated our 
     \item \textbf{Hypertrophic Cardiomyopathy (HCM):} Thickened heart muscle.
     \item \textbf{Dilated Cardiomyopathy (DCM):} Enlarged heart chamber.
 \end{enumerate}
-The dataset consisted of $\sim$132,000 cells \cite{agarwalla2023presentation}. To prevent data leakage and memorization, we split the data by Patient ID rather than by cell (Train: Patients A \& B; Test: Patient C) \cite{agarwalla2023presentation}.
+The dataset consisted of $\sim$132,000 cells \cite{agarwalla2023presentation}. To prevent data leakage and memorization, we \textif{split the data by Patient ID} rather than by cell (Train: Patients A \& B; Test: Patient C) \cite{agarwalla2023presentation}.
 
 \subsection{Teacher Model Performance}
 The original Teacher model achieved high accuracy on this task. As shown in the confusion matrix and heatmap below (Figure \ref{fig:teacher_results}), it correctly classifies the majority of HCM (88\%) and DCM (84\%) cases with high confidence.
@@ -326,9 +333,9 @@ The distilled 4.3M parameter Student model demonstrated exceptional performance 
 \subsubsection{Pretraining Metrics and Class-wise Analysis}
 Quantitatively, the Student model demonstrates remarkable robustness to class imbalance, a common challenge in biological datasets where disease samples are often rare compared to healthy controls.
 
-As detailed in Figure \ref{fig:student_metrics}, the model achieves an *88.4\% Recall* on the minority class (Dilated Cardiomyopathy - DCM). This is a critical result because it indicates the model rarely misses a true DCM case, a high priority for diagnostic screening tools. However, the Precision for DCM is lower (66.3\%), suggesting that while the model catches almost all DCM cases, it occasionally misclassifies other phenotypes (likely HCM, given the biological overlap) as DCM.
+As detailed in Figure \ref{fig:student_metrics}, the model achieves an \textif{88.4\% Recall} on the minority class (Dilated Cardiomyopathy - DCM). This is a critical result because it indicates the model rarely misses a true DCM case, a high priority for diagnostic screening tools. However, the Precision for DCM is lower (66.3\%), suggesting that while the model catches almost all DCM cases, it occasionally misclassifies other phenotypes (likely HCM, given the biological overlap) as DCM.
 
-Conversely, for the Non-Failing (NF) healthy control group, the model maintains high *Precision (84.2\%)* and *Recall (85.3\%)*. This balance ensures trustworthiness; the model effectively screens out healthy patients without raising excessive false alarms. The high F1-scores across all three classes (87.6\% for HCM, 75.8\% for DCM, 84.7\% for NF) validate that the distillation process preserved the Teacher's ability to distinguish subtle transcriptomic signatures across diverse biological states.
+Conversely, for the Non-Failing (NF) healthy control group, the model maintains high \textif{Precision (84.2\%)} and \textit{Recall (85.3\%)}. This balance ensures trustworthiness; the model effectively screens out healthy patients without raising excessive false alarms. The high F1-scores across all three classes (87.6\% for HCM, 75.8\% for DCM, 84.7\% for NF) validate that the distillation process preserved the Teacher's ability to distinguish subtle transcriptomic signatures across diverse biological states.
 
 % FIGURE 7: STUDENT METRICS
 \begin{figure}[H]
@@ -367,7 +374,7 @@ Our reproduction and extension of Geneformer revealed significant insights into 
 
 \textbf{Weaknesses:}
 \begin{itemize}
-    \item \textbf{Data Availability:} While the pre-tokenized data is provided, the raw transcriptome data is not easily accessible, limiting validation of the preprocessing steps \cite{agarwalla2023presentation}.
+    \item \textbf{Data Availability:} While the pre-tokenized data is provided, the raw transcriptome data is not easily accessible, limiting validation of the preprocessing steps and potential extension of the research. \cite{agarwalla2023presentation}
     \item \textbf{Input Representation:} Rank value encoding, while robust, discards precise expression magnitude information which might be crucial for subtle phenotype differentiation \cite{agarwalla2023presentation}.
     \item \textbf{Data Bias:} The Genecorpus-30M is heavily skewed towards specific organs (e.g., fetal tissue), potentially biasing predictions for underrepresented tissues \cite{agarwalla2023presentation}.
     \item \textbf{Compute Requirements:} The original training required massive computational resources (12 V100 GPUs), making it inaccessible for most academic labs to retrain or extend \cite{agarwalla2023presentation}.
@@ -404,6 +411,8 @@ Our analysis reveals a functional trade-off: while the Teacher acts as an "Aggre
 % -------------------------------------------------------------------
 % REFERENCES
 % -------------------------------------------------------------------
+\nocite{*}
+
 \printbibliography
 
 \end{document}

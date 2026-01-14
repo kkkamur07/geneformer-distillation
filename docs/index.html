@@ -218,17 +218,17 @@
         <ul>
             <li><strong>Filtering Criteria:</strong> To remove low-quality data, cells were excluded based on three specific metrics:
                 <ul>
-                    <li><em>Mitochondrial Content:</em> Cells with mitochondrial read percentages greater than 3 standard deviations above the mean were removed</li>
-                    <li><em>Read Depth:</em> Cells with total read counts outside of 3 standard deviations from the dataset mean were excluded</li>
-                    <li><em>Gene Count:</em> Cells with fewer than seven detected protein-coding or miRNA genes were removed</li>
+                    <li><em>Mitochondrial Content:</em> Cells with mitochondrial read percentages greater than 3 standard deviations above the mean within a dataset were removed, as high mitochondrial content typically indicates cell death (apoptosis) or membrane rupture</li>
+                    <li><em>Read Depth:</em> Cells with total read counts outside of 3 standard deviations from the dataset mean were excluded to filter out empty droplets or potential doublets</li>
+                    <li><em>Gene Count:</em> Cells with fewer than seven detected protein-coding or miRNA genes were removed, as the model's 15% masking objective would be ineffective on such sparse data</li>
                 </ul>
             </li>
-            <li><strong>Exclusion of High Mutational Burden:</strong> Cells with high mutational burdens were deliberately excluded to ensure the model learns "normal" network topology</li>
-            <li><strong>Normalization Strategy:</strong> Raw transcript counts were normalized by the total read count per cell to handle technical variation across platforms</li>
+            <li><strong>Exclusion of High Mutational Burden:</strong> Cells with high mutational burdens, such as malignant cancer cells or immortalized cell lines, were deliberately excluded. This ensures the model learns "normal" network topology without the confounding effects of substantial network rewiring found in cancer</li>
+            <li><strong>Normalization Strategy:</strong> To handle technical variation across droplet-based sequencing platforms, raw transcript counts were normalized by the total read count per cell. This accounts for varying sequencing depths between experiments while preserving the relative abundance of genes</li>
         </ul>
 
         <p>
-            Ultimately, 27.4 million cells passed these quality filters to form the final training corpus.
+            Ultimately, 27.4 million cells passed these quality filters to form the final training corpus. The data structure includes gene IDs, read counts, and extensive metadata (organ, sequencing platform, etc.), as visualized below.
         </p>
 
         <!-- FIGURE 1: Data Example -->
@@ -245,13 +245,13 @@
 
         <h3>1.3 Rank Value Encoding</h3>
         <p>
-            A critical innovation of Geneformer is the <strong>Rank Value Encoding</strong>. Traditional transcriptomic analyses often rely on raw expression counts, which can be heavily biased by ubiquitously expressed "housekeeping" genes. To mitigate this bias and focus the model's attention on biologically informative regulatory genes (transcription factors), Geneformer employs a rank-based input representation.
+            A critical innovation of Geneformer is the <strong>Rank Value Encoding</strong>. Traditional transcriptomic analyses often rely on raw expression counts, which can be heavily biased by ubiquitously expressed "housekeeping" genes. These genes consume a large proportion of sequencing reads but often provide little information about the specific cellular state or disease phenotype. To mitigate this bias and focus the model's attention on biologically informative regulatory genes (transcription factors), Geneformer employs a rank-based input representation.
         </p>
 
-        <p>The encoding process transforms raw data through the following mathematical steps:</p>
+        <p>The encoding process transforms raw data into a sequence of tokens through the following mathematical steps:</p>
 
         <ol>
-            <li><strong>Normalization:</strong> For a gene <em>g</em> in cell <em>c</em>, the normalized value is calculated as:
+            <li><strong>Normalization:</strong> First, the raw read count of a gene is normalized by the sequencing depth of that cell (total reads) and scaled by a gene-specific median factor. For a gene <em>g</em> in cell <em>c</em>, the normalized value \(V_{gc}\) is calculated as:
                 <div class="equation">
                     \[V_{gc} = \frac{R_{gc}}{D_c} \times \frac{10,000}{M_g}\]
                 </div>
@@ -261,38 +261,53 @@
                     <li>\(D_c\) is the total read depth of cell <em>c</em></li>
                     <li>\(M_g\) is the non-zero median expression of gene <em>g</em> across the entire Genecorpus-30M</li>
                 </ul>
+                This step effectively deprioritizes housekeeping genes, which typically have high median expression (\(M_g\)), thereby lowering their normalized value \(V_{gc}\).
             </li>
-            <li><strong>Ranking:</strong> Genes within each cell are sorted in descending order:
+            <li><strong>Ranking:</strong> The genes within each cell are then sorted in descending order based on their normalized values \(V_{gc}\):
                 <div class="equation">
                     \[\text{Rank}(c) = \text{argsort}_{\text{desc}}(V_{1c}, V_{2c}, ..., V_{nc})\]
                 </div>
             </li>
-            <li><strong>Tokenization:</strong> The ranked list of genes is converted into a sequence of tokens, with highly expressed genes appearing earlier in the sequence</li>
+            <li><strong>Tokenization:</strong> The resulting ranked list of genes is converted into a sequence of tokens. Highly expressed, cell-state-defining genes (like transcription factors) appear earlier in the sequence, while housekeeping genes are pushed towards the end</li>
         </ol>
+
+        <p>
+            This rank-based representation is robust to variations in sequencing depth and ensures that the model learns the hierarchical structure of gene regulation rather than absolute expression levels.
+        </p>
 
         <h3>1.4 Model Architecture and Pretraining</h3>
         <p>
-            Geneformer is built upon a standard Transformer encoder architecture consisting of six transformer encoder units. The specific architectural hyperparameters are:
+            Geneformer is built upon a standard Transformer encoder architecture, specifically adapted for the constraints of single-cell data. The model consists of a stack of <em>six transformer encoder units</em>, a depth chosen based on the maximum data scale available for effective pretraining.
+        </p>
+        <p>
+            The specific architectural hyperparameters are as follows:
         </p>
         <ul>
-            <li><strong>Input Size:</strong> 2,048 tokens (covers 93% of rank value encodings)</li>
-            <li><strong>Embedding Dimension:</strong> 256</li>
+            <li><strong>Input Size:</strong> 2,048 tokens. This length was selected to fully represent 93% of the rank value encodings in the Genecorpus-30M dataset</li>
+            <li><strong>Embedding Dimension (\(d_{\text{model}}\)):</strong> 256. Each gene token is embedded into a 256-dimensional vector space</li>
             <li><strong>Attention Heads:</strong> 4 heads per layer</li>
-            <li><strong>Feed-Forward Dimension:</strong> 512</li>
-            <li><strong>Regularization:</strong> Dropout probability of 0.02</li>
+            <li><strong>Feed-Forward Dimension (\(d_{\text{ff}}\)):</strong> 512</li>
+            <li><strong>Regularization:</strong> A dropout probability of 0.02 is applied to fully connected layers and attention probabilities to prevent overfitting</li>
         </ul>
+
+        <p>
+            The model utilizes full dense self-attention across the entire input sequence. Training was optimized using the AdamW optimizer with a linear learning rate scheduler (max learning rate \(1 \times 10^{-3}\)) and a warmup period of 10,000 steps in the paper.
+        </p>
 
         <h4>Attention Mechanism: Learning Network Dynamics</h4>
         <p>
-            The core of Geneformer is the multi-head self-attention mechanism, which enables the model to be "context-aware." Just as in natural language processing where "bank" has different meanings in different contexts, Geneformer uses attention to learn how the function of a specific gene changes based on the co-expression of other regulators in the cell.
+            The core of Geneformer is the multi-head self-attention mechanism, which enables the model to be "context-aware." In natural language processing, attention allows a model to understand that the word "bank" has a different meaning in the context of "river" versus "money." Analogously, Geneformer uses attention to learn how the function of a specific gene changes based on the co-expression of other regulators in the cell.
         </p>
         <p>
-            Analysis of the pretrained weights revealed that the model learns biological hierarchies in a completely self-supervised manner:
+            The attention weights (\(A\)) for a given gene reflect which other genes it "attends" to (inputs) and which genes attend to it (regulatory influence). Analysis of the pretrained weights revealed that the model learns biological hierarchies in a completely self-supervised manner:
         </p>
         <ul>
-            <li><strong>Transcription Factor Specialization:</strong> ~20% of attention heads significantly prioritize transcription factors</li>
-            <li><strong>Layer-wise Hierarchy:</strong> Early layers survey the broad input space, while deeper layers focus on highest-ranked genes</li>
+            <li><strong>Transcription Factor Specialization:</strong> Approximately 20% of the attention heads significantly prioritize transcription factors (TFs) over other genes, recognizing their role as global regulators</li>
+            <li><strong>Layer-wise Hierarchy:</strong> The model exhibits a functional hierarchy across its six layers. Early layers tend to survey the broad input space (diverse attention), while deeper layers become "centrality-driven," focusing heavily on the highest-ranked genes that uniquely define the cell state</li>
         </ul>
+        <p>
+            This demonstrates that the attention mechanism successfully encodes the gene regulatory network topology without any prior biological labeling.
+        </p>
 
         <h4>Masked Language Modeling (MLM)</h4>
         <p>
@@ -324,10 +339,13 @@
             To address this, we implemented <strong>Knowledge Distillation (KD)</strong>. This technique compresses the knowledge of a large "Teacher" model into a smaller, lighter "Student" model.
         </p>
         <p>
-            Knowledge Distillation can be understood through an intuitive analogy: consider an experienced teacher guiding a student preparing for an exam. The teacher doesn't simply tell the student "the answer is C" — instead, they explain their reasoning: "C is most likely correct, but B is also plausible if you interpret the question differently, while A and D are clearly wrong for these reasons." This nuanced guidance helps the student understand not just what is correct, but why.
+            Knowledge Distillation can be understood through an intuitive analogy: consider an experienced teacher guiding a student preparing for an exam. The teacher doesn't simply tell the student "the answer is C" — instead, they explain their reasoning: "C is most likely correct, but B is also plausible if you interpret the question differently, while A and D are clearly wrong for these reasons." This nuanced guidance helps the student understand not just what is correct, but why, and how to think about similar problems in the future.
         </p>
         <p>
-            Similarly, in KD, a large pre-trained Teacher model transfers its learned knowledge to a compact Student model by sharing not just the final predictions, but the full probability distributions over all possible outputs. This "dark knowledge" — the implicit understanding of relationships between classes — is what makes distillation so effective.
+            Similarly, in KD, a large pre-trained Teacher model transfers its learned knowledge to a compact Student model by sharing not just the final predictions, but the full probability distributions over all possible outputs. For instance, when classifying an image of a husky, the Teacher might output: husky (70%), wolf (20%), German shepherd (8%), other (2%). This probability distribution reveals that the model has learned meaningful visual similarities between related classes — huskies do look more like wolves than like cats — information that would be completely lost if we only provided the hard label "husky" with 100% confidence.
+        </p>
+        <p>
+            The effectiveness of knowledge distillation stems from this "dark knowledge" — the implicit understanding of relationships between classes that emerges from extensive training. When the Student learns to mimic the Teacher's probability distributions, it inherits this <em>refined understanding without needing to see as many training examples or make the same mistakes.</em>
         </p>
 
         <p>
@@ -341,10 +359,10 @@
         </div>
 
         <h3>2.3 Distillation Methodology</h3>
-        <p>To investigate the limits of model compression, we established a distillation framework:</p>
+        <p>To investigate the limits of model compression, we established a distillation framework involving a <strong>frozen Teacher</strong> and <strong>multiple variable-sized Student</strong> models:</p>
         <ol>
-            <li><strong>Teacher Model:</strong> The original pretrained Geneformer (10M parameters), frozen during training</li>
-            <li><strong>Student Models:</strong> Three variants with different compression ratios:
+            <li><strong>Teacher Model:</strong> The original pretrained Geneformer (10M parameters). This model remains frozen during training to provide stable soft-label targets</li>
+            <li><strong>Student Models:</strong> We trained three distinct student variants to compare performance across different compression ratios:
                 <ul>
                     <li><strong>4.3M Parameters</strong> (~43% of Teacher size)</li>
                     <li><strong>3M Parameters</strong> (~30% of Teacher size)</li>
@@ -353,12 +371,19 @@
             </li>
         </ol>
 
+        <h4>Parameter Counting Methodology</h4>
         <p>
-            The total parameter count is dictated by the formula for BERT-style models:
+            The reported parameter counts include all trainable weights in the model: token embeddings, positional encodings, transformer encoder blocks (Self-Attention and Feed-Forward networks), and the classification head.
+        </p>
+        <p>
+            To achieve these reductions, we decreased the network depth (number of transformer layers) and the embedding dimension from \(d_{\text{model}} = 256\) to \(d_{\text{model}} \in \{128, 96, 64\}\), as the total parameter count is dictated by the formula for BERT-style models:
         </p>
         <div class="equation">
             \[N_{\text{params}} = 2 \cdot N_{\text{vocab}} \cdot d_{\text{model}} + N_{\text{layers}} \cdot \left(4 d_{\text{model}}^2 + 2 d_{\text{model}} \cdot d_{\text{ff}}\right)\]
         </div>
+        <p>
+            where \(N_{\text{vocab}}\) is the vocabulary size, \(N_{\text{layers}}\) is the number of transformer layers, \(d_{\text{model}}\) is the embedding dimension, and \(d_{\text{ff}}\) is the feed-forward hidden dimension (typically \(d_{\text{ff}} = 4 \cdot d_{\text{model}}\)).
+        </p>
 
         <h4>Loss Function Design</h4>
         <p>The Student is trained using a composite loss function:</p>
@@ -368,34 +393,41 @@
 
         <p>Where:</p>
         <ul>
-            <li><strong>\(L_{CE}\)</strong> (Cross Entropy Loss): Measures error between Student's predictions and ground truth labels
+            <li><strong>\(L_{CE}\)</strong> (Cross Entropy Loss): This measures the error between the Student's hard predictions (\(p_{student}\)) and the ground truth labels (\(y\)). It ensures the student learns the "right answer" by penalizing incorrect classifications
                 <div class="equation">
                     \[L_{CE} = - \sum_{i=1}^{C} y_{i} \log(p_{student, i})\]
                 </div>
             </li>
-            <li><strong>\(L_{KL}\)</strong> (Kullback-Leibler Divergence): Measures distributional distance between Student and Teacher predictions
+            <li><strong>\(L_{KL}\)</strong> (Kullback-Leibler Divergence): This measures the distributional distance between the Student's predictions and the Teacher's soft predictions. It captures how well the Student mimics the Teacher's probability distribution across all classes
                 <div class="equation">
                     \[L_{KL}(P_T || P_S) = \sum_{i=1}^{C} p_{teacher, i} \log \left( \frac{p_{teacher, i}}{p_{student, i}} \right)\]
                 </div>
+                By learning from the Teacher's soft labels, the Student learns the "dark knowledge" — the subtle relationships between classes that the Teacher has learned
             </li>
         </ul>
 
         <p>
-            We set the loss weighting coefficient <span class="highlight">α = 0.65</span> to balance contributions. No systematic hyperparameter optimization was conducted — we believe comprehensive tuning would yield substantial improvements.
+            For the distillation process, we set the loss weighting coefficient \(\alpha = 0.65\) to balance the contributions of soft predictions from the Teacher model and hard ground-truth labels. It should be noted that no systematic hyperparameter optimization was conducted in this study. We believe that <em>comprehensive hyperparameter tuning, including optimization of \(\alpha\), temperature \(T\), and learning rate, would yield substantial improvements in Student model performance.</em>
         </p>
 
         <h3>2.4 Engineering Optimizations</h3>
+        <p>
+            To enable training on a single GPU, we implemented critical engineering optimizations to handle the computational constraints:
+        </p>
 
         <h4>Dynamic Length-Grouped Sampling</h4>
         <p>
-            The Genecorpus-30M dataset exhibits a highly skewed distribution of sequence lengths. While the maximum input size is 2,048 tokens, the median sequence length is only 234 tokens. In standard random batching, if a single long sequence is paired with many short sequences, all short sequences must be padded with zeros to match the longest one, wasting computational resources.
+            Standard training pipelines typically sample batches randomly. However, as illustrated in Figure 5 below, the Genecorpus-30M dataset exhibits a highly skewed distribution of sequence lengths. While the maximum input size is 2,048 tokens, the median sequence length is only 234 tokens.
+        </p>
+        <p>
+            In a standard random batch, if a single long sequence (e.g., 2,048) is paired with many short sequences (e.g., 200), all short sequences must be padded with zeros to match the longest one. This results in the GPU spending the vast majority of its compute power <strong>processing empty "pad" tokens.</strong>
         </p>
 
         <p>To solve this, we implemented <strong>Dynamic Length-Grouped Sampling</strong>:</p>
         <ol>
-            <li><strong>Sorting:</strong> Gather a large "megabatch" and sort by sequence length</li>
+            <li><strong>Sorting:</strong> We gather a large "megabatch" of samples and sort them by sequence length</li>
             <li><strong>Grouping:</strong> Construct minibatches using sequences of similar lengths</li>
-            <li><strong>Dynamic Padding:</strong> Each minibatch is padded only to its longest sequence</li>
+            <li><strong>Dynamic Padding:</strong> Each minibatch is padded only to the longest sequence <em>within that specific batch</em>, rather than the global maximum</li>
         </ol>
 
         <p>
@@ -412,16 +444,21 @@
 
         <h3>3.1 Initial Evaluation: Pretraining Metrics</h3>
         <p>
-            Before fine-tuning on specific disease classification tasks, we verified that the Student model had successfully acquired the fundamental "grammar" of gene regulation from the Teacher using two key metrics:
+            Before fine-tuning on specific disease classification tasks, it was critical to verify that the Student models had successfully acquired the fundamental "grammar" of gene regulation from the Teacher. We evaluated this using two key metrics on the held-out validation set:
         </p>
         <ul>
-            <li><strong>Masked Language Modeling (MLM) Accuracy:</strong> Measures how often the model correctly predicts a masked gene</li>
+            <li><strong>Masked Language Modeling (MLM) Accuracy:</strong> Measures how often the model correctly predicts a masked gene based on the context of the surrounding genes. High accuracy indicates a strong grasp of network topology</li>
             <li><strong>Perplexity:</strong> Measures the model's uncertainty in predicting the next token (lower is better)</li>
         </ul>
+
+        <p>
+            Evaluating these metrics ensures that the Knowledge Distillation process successfully transferred the generalizable biological knowledge, rather than just overfitting to a specific downstream task. As shown in the table below, the distilled Student models achieve performance comparable to the Teacher, with the marginal gaps confirming that the Students retain the core structural understanding required for biological inference.
+        </p>
 
         <table>
             <thead>
                 <tr>
+                    <th>Model Variant</th>
                     <th>Metric</th>
                     <th>Teacher</th>
                     <th>Student</th>
@@ -430,27 +467,54 @@
             </thead>
             <tbody>
                 <tr>
+                    <td rowspan="2"><strong>4.3M Parameters</strong><br><em>(Best Balance)</em></td>
                     <td>MLM Accuracy</td>
-                    <td>0.3072</td>
-                    <td>0.2606</td>
-                    <td>0.0466</td>
+                    <td>0.2981</td>
+                    <td>0.2490</td>
+                    <td>-0.0491</td>
                 </tr>
                 <tr>
                     <td>Perplexity</td>
-                    <td>15.28</td>
-                    <td>21.36</td>
-                    <td>6.08</td>
+                    <td>16.76</td>
+                    <td>24.25</td>
+                    <td>+7.49</td>
+                </tr>
+                <tr>
+                    <td rowspan="2"><strong>3M Parameters</strong></td>
+                    <td>MLM Accuracy</td>
+                    <td>0.3049</td>
+                    <td>0.2034</td>
+                    <td>-0.1025</td>
+                </tr>
+                <tr>
+                    <td>Perplexity</td>
+                    <td>16.32</td>
+                    <td>34.32</td>
+                    <td>+18.00</td>
+                </tr>
+                <tr>
+                    <td rowspan="2"><strong>2M Parameters</strong></td>
+                    <td>MLM Accuracy</td>
+                    <td>0.3049</td>
+                    <td>0.1888</td>
+                    <td>-0.1161</td>
+                </tr>
+                <tr>
+                    <td>Perplexity</td>
+                    <td>15.77</td>
+                    <td>40.30</td>
+                    <td>+24.52</td>
                 </tr>
             </tbody>
         </table>
 
         <p>
-            The distilled Student model (4.3M parameters) achieves performance comparable to the Teacher (10M parameters). The marginal gap confirms that the Student retains the core structural understanding required for biological inference.
+            While the 4.3M model maintains a close proximity to the Teacher's perplexity, the 3M and 2M models show a drop in prediction capability, as indicated by the sharp rise in perplexity.
         </p>
 
         <h3>3.2 Experimental Setup: Cardiomyopathy Classification</h3>
         <p>
-            We validated our approach on a downstream task of classifying cardiomyocytes into three phenotypes:
+            Having validated the Student's general representational power, we validated our approach on a downstream task of classifying cardiomyocytes into three phenotypes:
         </p>
         <ol>
             <li><strong>Non-Failing (NF):</strong> Healthy control tissue</li>
@@ -458,10 +522,13 @@
             <li><strong>Dilated Cardiomyopathy (DCM):</strong> Enlarged heart chamber</li>
         </ol>
         <p>
-            The dataset consisted of ~132,000 cells. To prevent data leakage, we split the data by Patient ID rather than by cell (Train: Patients A & B; Test: Patient C).
+            The dataset consisted of ~132,000 cells. To prevent data leakage and memorization, we <em>split the data by Patient ID</em> rather than by cell (Train: Patients A & B; Test: Patient C).
         </p>
 
-        <h3>3.3 Performance Results</h3>
+        <h3>3.3 Teacher Model Performance</h3>
+        <p>
+            The original Teacher model achieved high accuracy on this task. As shown in the confusion matrix and heatmap below (Figure 6), it correctly classifies the majority of HCM (88%) and DCM (84%) cases with high confidence.
+        </p>
 
         <!-- FIGURE 6: Teacher Results -->
         <div class="figure">
@@ -469,8 +536,9 @@
             <div class="caption">Figure 6: Teacher Model Results. The confusion matrix (left) confirms high precision, particularly for HCM (96%). The heatmap (right) shows confident separation between cell states.</div>
         </div>
 
+        <h3>3.4 Student Model (Distilled) Performance</h3>
         <p>
-            The original Teacher model achieved high accuracy on this task, correctly classifying the majority of HCM (88%) and DCM (84%) cases with high confidence.
+            The distilled 4.3M parameter Student model demonstrated exceptional performance retention. While there is slightly more overlap in the predictions compared to the teacher, the model correctly identifies most healthy patients (Figure 7).
         </p>
 
         <!-- FIGURE 7: Student Results -->
@@ -479,9 +547,7 @@
             <div class="caption">Figure 7: Student Model Results. The distilled model shows slightly more overlap in the center of the heatmap, indicating difficulty differentiating the specific signatures of the two cardiomyopathies, but maintains high accuracy for Non-Failing (NF) predictions.</div>
         </div>
 
-        <p>
-            The distilled 4.3M parameter Student model demonstrated exceptional performance retention. While there is slightly more overlap in the predictions compared to the teacher, the model correctly identifies most healthy patients.
-        </p>
+        <h4>Pretraining Metrics and Class-wise Analysis</h4>
 
         <!-- FIGURE 8: Student Metrics -->
         <div class="figure">
@@ -490,12 +556,14 @@
         </div>
 
         <p>
-            Quantitatively, the Student model demonstrates remarkable robustness to class imbalance, a common challenge in biological datasets where disease samples are often rare compared to healthy controls. The model achieves <strong>88.4% Recall</strong> on the minority class (DCM), indicating the model rarely misses a true DCM case — critical for diagnostic screening tools.
+            Quantitatively, the Student model demonstrates remarkable robustness to class imbalance, a common challenge in biological datasets where disease samples are often rare compared to healthy controls.
         </p>
-
-        <div class="note">
-            <strong>Key Finding:</strong> The 4.3M Student model retains <span class="highlight">98%</span> of the Teacher's performance (84.53% vs 86.14% accuracy) while requiring significantly fewer computational resources.
-        </div>
+        <p>
+            As detailed in Figure 8, the model achieves an <em>88.4% Recall</em> on the minority class (Dilated Cardiomyopathy - DCM). This is a critical result because it indicates the model rarely misses a true DCM case, a high priority for diagnostic screening tools. However, the Precision for DCM is lower (66.3%), suggesting that while the model catches almost all DCM cases, it occasionally misclassifies other phenotypes (likely HCM, given the biological overlap) as DCM.
+        </p>
+        <p>
+            Conversely, for the Non-Failing (NF) healthy control group, the model maintains high <em>Precision (84.2%)</em> and <em>Recall (85.3%)</em>. This balance ensures trustworthiness; the model effectively screens out healthy patients without raising excessive false alarms. The high F1-scores across all three classes (87.6% for HCM, 75.8% for DCM, 84.7% for NF) validate that the distillation process preserved the Teacher's ability to distinguish subtle transcriptomic signatures across diverse biological states.
+        </p>
 
         <h4>Downscaling Analysis</h4>
         
@@ -506,7 +574,7 @@
         </div>
 
         <p>
-            We compared the Teacher model against varying sizes of the Student model:
+            We compared the Teacher model against varying sizes of the Student model (4.3M, 3M, and 2M parameters). As shown in Figure 9, the 4.3M parameter model retains <strong>98%</strong> of the Teacher's performance (84.53% vs 86.14%). Even the tiny 2M parameter model remains viable at 79.1% accuracy, proving that massive compute is not strictly necessary for this task.
         </p>
         <ul>
             <li><strong>Teacher (10M):</strong> 86.14% accuracy</li>
@@ -515,9 +583,9 @@
             <li><strong>Student 2M:</strong> 79.1% accuracy</li>
         </ul>
 
-        <p>
-            Even the tiny 2M parameter model remains viable, proving that massive compute is not strictly necessary for this task.
-        </p>
+        <div class="note">
+            <strong>Key Finding:</strong> The 4.3M Student model retains <span class="highlight">98%</span> of the Teacher's performance (84.53% vs 86.14% accuracy) while requiring significantly fewer computational resources.
+        </div>
 
         <h2>4. Discussion</h2>
 
@@ -532,34 +600,67 @@
 
         <p><strong>Weaknesses:</strong></p>
         <ul>
-            <li>Limited accessibility to raw transcriptome data</li>
+            <li><strong>Data Availability:</strong> While the pre-tokenized data is provided, the raw transcriptome data is not easily accessible, limiting validation of the preprocessing steps and potential extension of the research</li>
             <li>Rank encoding discards precise expression magnitude information</li>
             <li>Data bias towards specific organs (e.g., fetal tissue)</li>
-            <li>Massive computational requirements (12 V100 GPUs)</li>
+            <li><strong>Compute Requirements:</strong> The original training required massive computational resources (12 V100 GPUs), making it inaccessible for most academic labs to retrain or extend</li>
         </ul>
 
         <h3>4.2 Reproducibility Experience</h3>
         <p>Reproducing the original results presented significant engineering hurdles:</p>
         <ul>
-            <li><strong>Data Scale:</strong> Required specialized memory optimization (int64 → int16 conversion)</li>
+            <li><strong>Data Scale:</strong> Handling 30M rows of pre-tokenized data required specialized memory optimization. The original dataset utilized <code>int64</code> integers; we converted this to <code>int16</code> format, which drastically reduced memory consumption and prevented RAM overflow during loading</li>
             <li><strong>Metadata Complexity:</strong> Complex parsing of heterogeneous metadata across datasets</li>
-            <li><strong>Hardware Constraints:</strong> Necessitated development of custom data collator and Knowledge Distillation</li>
+            <li><strong>Hardware Constraints:</strong> Training the 10M parameter model was infeasible on consumer hardware, necessitating the development of our custom data collator and the adoption of Knowledge Distillation</li>
         </ul>
 
         <h3>4.3 Future Work</h3>
+        <p>To address these limitations and further democratize genomic AI, future research should focus on:</p>
         <ol>
-            <li><strong>Hyperparameter Optimization:</strong> Comprehensive tuning of distillation parameters (α, temperature, learning rate)</li>
+            <li><strong>Distillation Hyperparameter Optimization:</strong> We used standard hyperparameters for distillation; we believe results can be even better with comprehensive hyperparameter tuning</li>
             <li><strong>Bias Mitigation:</strong> Collecting more diverse datasets to balance organ representation</li>
-            <li><strong>V2 Dataset:</strong> Applying distillation techniques to the 104M-row V2 dataset</li>
+            <li><strong>V2 Dataset:</strong> The authors have mentioned a 104M-row V2 dataset. Applying our distillation techniques to this larger corpus could yield even more powerful lightweight models</li>
         </ol>
 
         <h2>5. Conclusion</h2>
         <p>
-            In this project, we successfully reproduced the Geneformer pipeline and introduced a <strong>Geneformer Distilled</strong> model that democratizes genomic AI. Despite significant hardware constraints, we compressed the model to 4.3M, 3M, and 2M parameters, achieving accuracy comparable to the original 10M-parameter Teacher while utilizing only <span class="highlight">1/25th of the compute</span> and <span class="highlight">1/20th of the data</span>.
+            In this project, we successfully reproduced the Geneformer pipeline and introduced a <strong>Geneformer Distilled</strong> model that democratizes genomic AI. Despite significant hardware constraints, we compressed the model to 4.3M, 3M, and 2M parameters, achieving accuracy comparable to the original 10M-parameter Teacher while utilizing only <span class="highlight">1/25th of the compute</span> and <span class="highlight">1/20th of the data</span> [2].
         </p>
         <p>
-            Our analysis reveals a functional trade-off: while the Teacher acts as an "Aggressive Disease Detector" with higher recall (88% for HCM), the Student serves as a "Robust Healthy Screener," maintaining high precision for non-failing hearts (85%) despite slightly reduced granularity in distinguishing specific cardiomyopathies. Ultimately, this work demonstrates that lightweight models can effectively retain the grammar of gene regulation, significantly lowering the barrier to entry for therapeutic discovery in network biology.
+            Our analysis reveals a functional trade-off: while the Teacher acts as an "Aggressive Disease Detector" with higher recall (88% for HCM), the Student serves as a "Robust Healthy Screener," maintaining high precision for non-failing hearts (85%) despite slightly reduced granularity in distinguishing specific cardiomyopathies. Ultimately, this work demonstrates that lightweight models can effectively retain the grammar of gene regulation, significantly lowering the barrier to entry for therapeutic discovery in network biology [2].
         </p>
+
+        
+        <h2 id="references">References</h2>
+        <div class="bibliography">
+            <ol>
+                <li>
+                    Theodoris, C. V., Xiao, L., Chopra, A., Chaffin, M. D., Al Sayed, Z. R., Hill, M. C., ... & Liu, X. S. (2023). 
+                    <strong>Transfer learning enables predictions in network biology.</strong> 
+                    <em>Nature</em>, 618(7965), 616-624.
+                </li>
+                <li>
+                    Agarwalla, K., & Saini, A. (2023). 
+                    <strong>Seminar on (Large) Language Model Applications for Text and Biological Data: Transfer learning enables prediction in network biology.</strong> 
+                    Presentation Slides, LMU Munich.
+                </li>
+                <li>
+                    Chaffin, M., et al. (2022). 
+                    <strong>Single-nucleus profiling of human dilated and hypertrophic cardiomyopathy.</strong> 
+                    <em>Nature</em>, 608, 174-180.
+                </li>
+                <li>
+                    Hinton, G., Vinyals, O., & Dean, J. (2015). 
+                    <strong>Distilling the knowledge in a neural network.</strong> 
+                    <em>arXiv preprint arXiv:1503.02531</em>.
+                </li>
+                <li>
+                    Stanford University. (2025). 
+                    <strong>CS336: Language Modeling from Scratch.</strong> 
+                    Available at: <a href="https://stanford-cs336.github.io/spring2025/">https://stanford-cs336.github.io/spring2025/</a> (Accessed: 2026-01-14).
+                </li>
+            </ol>
+        </div>
 
         <footer>
             <p>&copy; 2026 Anshul Saini and Krrish Agarwalla | Ludwig-Maximilians-Universität München</p>
